@@ -1,0 +1,52 @@
+---
+name: Build
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+env:
+  SCRIPTS_NO_INTERACTIVE: 'true'
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    name: Golang
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Setup Golang
+        uses: actions/setup-go@v2
+        with:
+          go-version: '^1.17'
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v2
+      - name: Build
+        run: |
+          make
+          git --no-pager diff -- ':(exclude)go.sum' && git diff --quiet -- ':(exclude)go.sum'
+      - name: Codecov
+        uses: codecov/codecov-action@v1
+
+  sonarcloud:
+    name: SonarCloud
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: SonarCloud
+        if: env.SONAR_TOKEN
+        uses: SonarSource/sonarcloud-github-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
