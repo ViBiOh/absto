@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/ViBiOh/absto/pkg/model"
-	"github.com/ViBiOh/fibr/pkg/provider"
 	"github.com/minio/minio-go/v7"
 )
 
@@ -29,7 +28,7 @@ func convertError(err error) error {
 	}
 
 	if strings.Contains(err.Error(), "The specified key does not exist") {
-		return provider.ErrNotExist(err)
+		return model.ErrNotExist(err)
 	}
 
 	return err
