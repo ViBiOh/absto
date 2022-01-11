@@ -31,7 +31,7 @@ func New(directory string) (App, error) {
 	rootDirectory := strings.TrimSuffix(directory, "/")
 
 	if len(rootDirectory) == 0 {
-		return App{}, errors.New("no directory provided")
+		return App{}, nil
 	}
 
 	info, err := os.Stat(rootDirectory)
@@ -49,6 +49,11 @@ func New(directory string) (App, error) {
 		rootDirectory: rootDirectory,
 		rootDirname:   info.Name(),
 	}, nil
+}
+
+// Enabled checks that requirements are met
+func (a App) Enabled() bool {
+	return len(a.rootDirectory) != 0
 }
 
 func (a App) path(pathname string) string {

@@ -7,6 +7,7 @@ import (
 
 // Storage describe action on a storage provider
 type Storage interface {
+	Enabled() bool
 	WithIgnoreFn(ignoreFn func(Item) bool) Storage
 	Info(pathname string) (Item, error)
 	List(pathname string) ([]Item, error)
