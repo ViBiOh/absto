@@ -8,7 +8,9 @@ import (
 // Storage describe action on a storage provider
 type Storage interface {
 	Enabled() bool
+	Name() string
 	WithIgnoreFn(ignoreFn func(Item) bool) Storage
+	Path(pathname string) string
 	Info(pathname string) (Item, error)
 	List(pathname string) ([]Item, error)
 	WriterTo(pathname string) (io.WriteCloser, error)

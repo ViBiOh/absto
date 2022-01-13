@@ -25,7 +25,7 @@ func (a App) getRelativePath(pathname string) string {
 }
 
 func (a App) getFile(filename string, flags int) (*os.File, error) {
-	return os.OpenFile(a.path(filename), flags, getMode(filename))
+	return os.OpenFile(a.Path(filename), flags, getMode(filename))
 }
 
 func (a App) getWritableFile(filename string) (io.WriteCloser, error) {

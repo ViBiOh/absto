@@ -14,6 +14,9 @@ import (
 	"github.com/ViBiOh/httputils/v4/pkg/logger"
 )
 
+// Name of the storage implementation
+const Name = "fs"
+
 var _ model.Storage = App{}
 
 // ErrRelativePath occurs when path is relative (contains ".."")
@@ -56,8 +59,9 @@ func (a App) Enabled() bool {
 	return len(a.rootDirectory) != 0
 }
 
-func (a App) path(pathname string) string {
-	return path.Join(a.rootDirectory, pathname)
+// Name of the sotrage
+func (a App) Name() string {
+	return Name
 }
 
 // WithIgnoreFn create a new App with given ignoreFn
@@ -67,13 +71,18 @@ func (a App) WithIgnoreFn(ignoreFn func(model.Item) bool) model.Storage {
 	return a
 }
 
+// Path return full path of pathname
+func (a App) Path(pathname string) string {
+	return path.Join(a.rootDirectory, pathname)
+}
+
 // Info provide metadata about given pathname
 func (a App) Info(pathname string) (model.Item, error) {
 	if err := checkPathname(pathname); err != nil {
 		return model.Item{}, convertError(err)
 	}
 
-	fullpath := a.path(pathname)
+	fullpath := a.Path(pathname)
 
 	info, err := os.Stat(fullpath)
 	if err != nil {
@@ -89,7 +98,7 @@ func (a App) List(pathname string) ([]model.Item, error) {
 		return nil, convertError(err)
 	}
 
-	fullpath := a.path(pathname)
+	fullpath := a.Path(pathname)
 
 	files, err := os.ReadDir(fullpath)
 	if err != nil {
@@ -140,7 +149,7 @@ func (a App) UpdateDate(pathname string, date time.Time) error {
 		return convertError(err)
 	}
 
-	return convertError(os.Chtimes(a.path(pathname), date, date))
+	return convertError(os.Chtimes(a.Path(pathname), date, date))
 }
 
 // Walk browses item recursively
@@ -170,7 +179,7 @@ func (a App) CreateDir(name string) error {
 		return convertError(err)
 	}
 
-	return convertError(os.MkdirAll(a.path(name), 0o700))
+	return convertError(os.MkdirAll(a.Path(name), 0o700))
 }
 
 // Rename file or directory from storage
@@ -194,7 +203,7 @@ func (a App) Rename(oldName, newName string) error {
 		}
 	}
 
-	return convertError(os.Rename(a.path(oldName), a.path(newName)))
+	return convertError(os.Rename(a.Path(oldName), a.Path(newName)))
 }
 
 // Remove file or directory from storage
@@ -203,5 +212,5 @@ func (a App) Remove(pathname string) error {
 		return convertError(err)
 	}
 
-	return convertError(os.RemoveAll(a.path(pathname)))
+	return convertError(os.RemoveAll(a.Path(pathname)))
 }

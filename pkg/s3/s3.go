@@ -15,6 +15,9 @@ import (
 	"github.com/minio/minio-go/v7/pkg/credentials"
 )
 
+// Name of the storage implementation
+const Name = "s3"
+
 var _ model.Storage = App{}
 
 // App of package
@@ -49,6 +52,11 @@ func (a App) Enabled() bool {
 	return a.client != nil
 }
 
+// Name of the sotrage
+func (a App) Name() string {
+	return Name
+}
+
 // WithIgnoreFn create a new App with given ignoreFn
 func (a App) WithIgnoreFn(ignoreFn func(model.Item) bool) model.Storage {
 	a.ignoreFn = ignoreFn
@@ -56,9 +64,14 @@ func (a App) WithIgnoreFn(ignoreFn func(model.Item) bool) model.Storage {
 	return a
 }
 
+// Path return full path of pathname
+func (a App) Path(pathname string) string {
+	return strings.TrimPrefix(pathname, "/")
+}
+
 // Info provide metadata about given pathname
 func (a App) Info(pathname string) (model.Item, error) {
-	realPathname := getPath(pathname)
+	realPathname := a.Path(pathname)
 
 	if realPathname == "" {
 		return model.Item{
@@ -78,7 +91,7 @@ func (a App) Info(pathname string) (model.Item, error) {
 
 // List items in the storage
 func (a App) List(pathname string) ([]model.Item, error) {
-	realPathname := getPath(pathname)
+	realPathname := a.Path(pathname)
 	baseRealPathname := path.Base(realPathname)
 
 	objectsCh := a.client.ListObjects(context.Background(), a.bucket, minio.ListObjectsOptions{
@@ -113,7 +126,7 @@ func (a App) WriterTo(pathname string) (io.WriteCloser, error) {
 			}
 		}()
 
-		if _, err := a.client.PutObject(context.Background(), a.bucket, getPath(pathname), reader, -1, minio.PutObjectOptions{}); err != nil {
+		if _, err := a.client.PutObject(context.Background(), a.bucket, a.Path(pathname), reader, -1, minio.PutObjectOptions{}); err != nil {
 			logger.WithField("fn", "s3.WriterTo").WithField("item", pathname).Error("unable to put object: %s", err)
 		}
 	}()
@@ -123,7 +136,7 @@ func (a App) WriterTo(pathname string) (io.WriteCloser, error) {
 
 // ReaderFrom reads content from given pathname
 func (a App) ReaderFrom(pathname string) (io.ReadSeekCloser, error) {
-	object, err := a.client.GetObject(context.Background(), a.bucket, getPath(pathname), minio.GetObjectOptions{})
+	object, err := a.client.GetObject(context.Background(), a.bucket, a.Path(pathname), minio.GetObjectOptions{})
 	if err != nil {
 		return nil, convertError(fmt.Errorf("unable to get object: %s", err))
 	}
@@ -141,7 +154,7 @@ func (a App) UpdateDate(pathname string, date time.Time) error {
 // Walk browses item recursively
 func (a App) Walk(pathname string, walkFn func(model.Item) error) error {
 	objectsCh := a.client.ListObjects(context.Background(), a.bucket, minio.ListObjectsOptions{
-		Prefix:    getPath(pathname),
+		Prefix:    a.Path(pathname),
 		Recursive: true,
 	})
 
@@ -161,7 +174,7 @@ func (a App) Walk(pathname string, walkFn func(model.Item) error) error {
 
 // CreateDir container in storage
 func (a App) CreateDir(name string) error {
-	_, err := a.client.PutObject(context.Background(), a.bucket, model.Dirname(getPath(name)), strings.NewReader(""), 0, minio.PutObjectOptions{})
+	_, err := a.client.PutObject(context.Background(), a.bucket, model.Dirname(a.Path(name)), strings.NewReader(""), 0, minio.PutObjectOptions{})
 	if err != nil {
 		return convertError(fmt.Errorf("unable to create directory: %s", err))
 	}
@@ -171,8 +184,8 @@ func (a App) CreateDir(name string) error {
 
 // Rename file or directory from storage
 func (a App) Rename(oldName, newName string) error {
-	oldRoot := getPath(oldName)
-	newRoot := getPath(newName)
+	oldRoot := a.Path(oldName)
+	newRoot := a.Path(newName)
 
 	return a.Walk(oldRoot, func(item model.Item) error {
 		_, err := a.client.CopyObject(context.Background(), minio.CopyDestOptions{

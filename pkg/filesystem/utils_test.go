@@ -44,7 +44,7 @@ func TestCheckPathname(t *testing.T) {
 	}
 }
 
-func TestGetFullPath(t *testing.T) {
+func TestPath(t *testing.T) {
 	type args struct {
 		pathname string
 	}
@@ -69,8 +69,8 @@ func TestGetFullPath(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.intention, func(t *testing.T) {
-			if got := tc.instance.path(tc.args.pathname); got != tc.want {
-				t.Errorf("getFullPath() = `%s`, want `%s`", got, tc.want)
+			if got := tc.instance.Path(tc.args.pathname); got != tc.want {
+				t.Errorf("Path() = `%s`, want `%s`", got, tc.want)
 			}
 		})
 	}
