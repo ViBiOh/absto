@@ -188,18 +188,20 @@ func (a App) Rename(oldName, newName string) error {
 	newRoot := a.Path(newName)
 
 	return a.Walk(oldRoot, func(item model.Item) error {
+		pathname := a.Path(item.Pathname)
+
 		_, err := a.client.CopyObject(context.Background(), minio.CopyDestOptions{
 			Bucket: a.bucket,
-			Object: strings.Replace(item.Pathname, oldRoot, newRoot, -1),
+			Object: strings.Replace(pathname, oldRoot, newRoot, -1),
 		}, minio.CopySrcOptions{
 			Bucket: a.bucket,
-			Object: item.Pathname,
+			Object: pathname,
 		})
 		if err != nil {
 			return convertError(err)
 		}
 
-		if err = a.client.RemoveObject(context.Background(), a.bucket, item.Pathname, minio.RemoveObjectOptions{}); err != nil {
+		if err = a.client.RemoveObject(context.Background(), a.bucket, pathname, minio.RemoveObjectOptions{}); err != nil {
 			return convertError(fmt.Errorf("unable to delete object: %s", err))
 		}
 
@@ -210,7 +212,7 @@ func (a App) Rename(oldName, newName string) error {
 // Remove file or directory from storage
 func (a App) Remove(pathname string) error {
 	return a.Walk(pathname, func(item model.Item) error {
-		if err := a.client.RemoveObject(context.Background(), a.bucket, item.Pathname, minio.RemoveObjectOptions{}); err != nil {
+		if err := a.client.RemoveObject(context.Background(), a.bucket, a.Path(item.Pathname), minio.RemoveObjectOptions{}); err != nil {
 			return convertError(fmt.Errorf("unable to delete object: %s", err))
 		}
 

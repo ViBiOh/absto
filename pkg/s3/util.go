@@ -11,7 +11,7 @@ import (
 func convertToItem(info minio.ObjectInfo) model.Item {
 	return model.Item{
 		Name:     path.Base(info.Key),
-		Pathname: info.Key,
+		Pathname: "/" + strings.TrimSuffix(info.Key, "/"),
 		IsDir:    strings.HasSuffix(info.Key, "/"),
 		Date:     info.LastModified,
 		Size:     info.Size,
