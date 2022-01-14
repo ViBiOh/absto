@@ -46,7 +46,7 @@ func New(directory string) (App, error) {
 		return App{}, fmt.Errorf("path %s is not a directory", rootDirectory)
 	}
 
-	logger.Info("Serving file from %s", rootDirectory)
+	logger.Info("Filesystem Storage from `%s`", rootDirectory)
 
 	return App{
 		rootDirectory: rootDirectory,

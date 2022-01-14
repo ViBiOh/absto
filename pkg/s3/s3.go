@@ -41,6 +41,8 @@ func New(endpoint, accessKey, secretAccess, bucket string, useSSL bool) (App, er
 		return App{}, fmt.Errorf("unable to create minio client: %s", err)
 	}
 
+	logger.Info("S3 Storage from `%s`", bucket)
+
 	return App{
 		client: client,
 		bucket: bucket,
