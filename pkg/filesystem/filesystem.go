@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/ViBiOh/absto/pkg/model"
-	"github.com/ViBiOh/httputils/v4/pkg/logger"
 )
 
 // Name of the storage implementation
@@ -45,8 +44,6 @@ func New(directory string) (App, error) {
 	if !info.IsDir() {
 		return App{}, fmt.Errorf("path %s is not a directory", rootDirectory)
 	}
-
-	logger.Info("Filesystem Storage from `%s`", rootDirectory)
 
 	return App{
 		rootDirectory: rootDirectory,
@@ -124,13 +121,13 @@ func (a App) List(pathname string) ([]model.Item, error) {
 }
 
 // WriterTo opens writer for given pathname
-func (a App) WriterTo(pathname string) (io.WriteCloser, error) {
+func (a App) WriterTo(pathname string) (io.Writer, model.Closer, error) {
 	if err := checkPathname(pathname); err != nil {
-		return nil, convertError(err)
+		return nil, model.NoopCloser, convertError(err)
 	}
 
 	writer, err := a.getWritableFile(pathname)
-	return writer, convertError(err)
+	return writer, writer.Close, convertError(err)
 }
 
 // ReaderFrom reads content from given pathname

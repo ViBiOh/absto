@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/ViBiOh/absto/pkg/model"
-	"github.com/ViBiOh/httputils/v4/pkg/logger"
 
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
@@ -40,8 +39,6 @@ func New(endpoint, accessKey, secretAccess, bucket string, useSSL bool) (App, er
 	if err != nil {
 		return App{}, fmt.Errorf("unable to create minio client: %s", err)
 	}
-
-	logger.Info("S3 Storage from `%s`", bucket)
 
 	return App{
 		client: client,
@@ -118,22 +115,29 @@ func (a App) List(pathname string) ([]model.Item, error) {
 }
 
 // WriterTo opens writer for given pathname
-func (a App) WriterTo(pathname string) (io.WriteCloser, error) {
+func (a App) WriterTo(pathname string) (io.Writer, model.Closer, error) {
 	reader, writer := io.Pipe()
 
-	go func() {
-		defer func() {
-			if closeErr := reader.Close(); closeErr != nil {
-				logger.WithField("fn", "s3.WriterTo").WithField("item", pathname).Error("unable to close writer: %s", closeErr)
-			}
-		}()
+	done := make(chan struct{})
+	var err error
 
-		if _, err := a.client.PutObject(context.Background(), a.bucket, a.Path(pathname), reader, -1, minio.PutObjectOptions{}); err != nil {
-			logger.WithField("fn", "s3.WriterTo").WithField("item", pathname).Error("unable to put object: %s", err)
+	closer := func() error {
+		err = model.HandleClose(writer.Close, err)
+		<-done
+		return err
+	}
+
+	go func() {
+		defer close(done)
+
+		if _, err = a.client.PutObject(context.Background(), a.bucket, a.Path(pathname), reader, -1, minio.PutObjectOptions{}); err != nil {
+			err = fmt.Errorf("unable to put object: %s", err)
 		}
+
+		err = model.HandleClose(reader.Close, err)
 	}()
 
-	return writer, nil
+	return writer, closer, nil
 }
 
 // ReaderFrom reads content from given pathname

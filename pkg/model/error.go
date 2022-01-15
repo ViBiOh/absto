@@ -20,3 +20,15 @@ func IsNotExist(err error) bool {
 
 	return errors.Is(err, errNotExists)
 }
+
+// HandleClose call properly
+func HandleClose(closer Closer, err error) error {
+	if closeErr := closer(); closeErr != nil {
+		if err == nil {
+			return closeErr
+		}
+		return fmt.Errorf("%s: %w", err, closeErr)
+	}
+
+	return err
+}
