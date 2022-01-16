@@ -3,7 +3,7 @@ module github.com/ViBiOh/absto
 go 1.17
 
 require (
-	github.com/ViBiOh/httputils/v4 v4.34.3
+	github.com/ViBiOh/flags v0.0.1
 	github.com/minio/minio-go/v7 v7.0.21
 )
 

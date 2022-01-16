@@ -7,7 +7,7 @@ import (
 	"github.com/ViBiOh/absto/pkg/filesystem"
 	"github.com/ViBiOh/absto/pkg/model"
 	"github.com/ViBiOh/absto/pkg/s3"
-	"github.com/ViBiOh/httputils/v4/pkg/flags"
+	"github.com/ViBiOh/flags"
 )
 
 // Config of package
