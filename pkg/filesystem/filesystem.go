@@ -1,6 +1,7 @@
 package filesystem
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -120,18 +121,30 @@ func (a App) List(pathname string) ([]model.Item, error) {
 	return items, nil
 }
 
-// WriterTo opens writer for given pathname
-func (a App) WriterTo(pathname string) (io.Writer, model.Closer, error) {
+// WriteTo with content from reader to pathname
+func (a App) WriteTo(pathname string, reader io.Reader) error {
 	if err := checkPathname(pathname); err != nil {
-		return nil, model.NoopCloser, convertError(err)
+		return convertError(err)
 	}
 
 	writer, err := a.getWritableFile(pathname)
-	return writer, writer.Close, convertError(err)
+	if err != nil {
+		return convertError(err)
+	}
+
+	buffer := model.BufferPool.Get().(*bytes.Buffer)
+	defer model.BufferPool.Put(buffer)
+
+	_, err = io.CopyBuffer(writer, reader, buffer.Bytes())
+	if err != nil {
+		err = convertError(err)
+	}
+
+	return model.HandleClose(writer, err)
 }
 
-// ReaderFrom reads content from given pathname
-func (a App) ReaderFrom(pathname string) (io.ReadSeekCloser, error) {
+// ReadFrom reads content from given pathname
+func (a App) ReadFrom(pathname string) (io.ReadSeekCloser, error) {
 	if err := checkPathname(pathname); err != nil {
 		return nil, convertError(err)
 	}

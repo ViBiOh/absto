@@ -3,6 +3,7 @@ package model
 import (
 	"errors"
 	"fmt"
+	"io"
 )
 
 var errNotExists = errors.New("not exists")
@@ -22,8 +23,8 @@ func IsNotExist(err error) bool {
 }
 
 // HandleClose call properly
-func HandleClose(closer Closer, err error) error {
-	if closeErr := closer(); closeErr != nil {
+func HandleClose(closer io.Closer, err error) error {
+	if closeErr := closer.Close(); closeErr != nil {
 		if err == nil {
 			return closeErr
 		}

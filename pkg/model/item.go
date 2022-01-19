@@ -13,7 +13,7 @@ var (
 	// PdfExtensions contains extensions of Pdf
 	PdfExtensions = map[string]bool{".pdf": true}
 	// VideoExtensions contains extensions of Video
-	VideoExtensions = map[string]string{".mp4": "video/mp4", ".mov": "video/quicktime", ".avi": "video/x-msvideo"}
+	VideoExtensions = map[string]bool{".mp4": true, ".mov": true, ".avi": true}
 )
 
 // Item describe item on a storage provider
@@ -42,7 +42,7 @@ func (s Item) IsImage() bool {
 
 // IsVideo determine if item if a video
 func (s Item) IsVideo() bool {
-	return VideoExtensions[s.Extension()] != ""
+	return VideoExtensions[s.Extension()]
 }
 
 // Dir return the nearest directory (self of parent)

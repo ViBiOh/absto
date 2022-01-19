@@ -114,34 +114,17 @@ func (a App) List(pathname string) ([]model.Item, error) {
 	return items, nil
 }
 
-// WriterTo opens writer for given pathname
-func (a App) WriterTo(pathname string) (io.Writer, model.Closer, error) {
-	reader, writer := io.Pipe()
-
-	done := make(chan struct{})
-	var err error
-
-	closer := func() error {
-		err = model.HandleClose(writer.Close, err)
-		<-done
-		return err
+// WriteTo with content from reader to pathname
+func (a App) WriteTo(pathname string, reader io.Reader) error {
+	if _, err := a.client.PutObject(context.Background(), a.bucket, a.Path(pathname), reader, -1, minio.PutObjectOptions{}); err != nil {
+		return fmt.Errorf("unable to put object: %s", err)
 	}
 
-	go func() {
-		defer close(done)
-
-		if _, err = a.client.PutObject(context.Background(), a.bucket, a.Path(pathname), reader, -1, minio.PutObjectOptions{}); err != nil {
-			err = fmt.Errorf("unable to put object: %s", err)
-		}
-
-		err = model.HandleClose(reader.Close, err)
-	}()
-
-	return writer, closer, nil
+	return nil
 }
 
-// ReaderFrom reads content from given pathname
-func (a App) ReaderFrom(pathname string) (io.ReadSeekCloser, error) {
+// ReadFrom reads content from given pathname
+func (a App) ReadFrom(pathname string) (io.ReadSeekCloser, error) {
 	object, err := a.client.GetObject(context.Background(), a.bucket, a.Path(pathname), minio.GetObjectOptions{})
 	if err != nil {
 		return nil, convertError(fmt.Errorf("unable to get object: %s", err))
