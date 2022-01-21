@@ -166,11 +166,12 @@ func TestConvertToItem(t *testing.T) {
 				info:     readmeInfo,
 			},
 			model.Item{
-				Name:     "README.md",
-				Pathname: "/README.md",
-				IsDir:    false,
-				Date:     readmeInfo.ModTime(),
-				Size:     readmeInfo.Size(),
+				Name:      "README.md",
+				Pathname:  "/README.md",
+				Extension: ".md",
+				IsDir:     false,
+				Date:      readmeInfo.ModTime(),
+				Size:      readmeInfo.Size(),
 			},
 		},
 	}

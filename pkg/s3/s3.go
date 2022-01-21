@@ -163,7 +163,7 @@ func (a App) Walk(pathname string, walkFn func(model.Item) error) error {
 
 // CreateDir container in storage
 func (a App) CreateDir(name string) error {
-	_, err := a.client.PutObject(context.Background(), a.bucket, model.Dirname(a.Path(name)), strings.NewReader(""), 0, minio.PutObjectOptions{})
+	_, err := a.client.PutObject(context.Background(), a.bucket, dirname(a.Path(name)), strings.NewReader(""), 0, minio.PutObjectOptions{})
 	if err != nil {
 		return convertError(fmt.Errorf("unable to create directory: %s", err))
 	}

@@ -9,12 +9,15 @@ import (
 )
 
 func convertToItem(info minio.ObjectInfo) model.Item {
+	name := path.Base(info.Key)
+
 	return model.Item{
-		Name:     path.Base(info.Key),
-		Pathname: "/" + strings.TrimSuffix(info.Key, "/"),
-		IsDir:    strings.HasSuffix(info.Key, "/"),
-		Date:     info.LastModified,
-		Size:     info.Size,
+		Name:      name,
+		Pathname:  "/" + strings.TrimSuffix(info.Key, "/"),
+		Extension: strings.ToLower(path.Ext(name)),
+		IsDir:     strings.HasSuffix(info.Key, "/"),
+		Date:      info.LastModified,
+		Size:      info.Size,
 	}
 }
 
@@ -28,4 +31,12 @@ func convertError(err error) error {
 	}
 
 	return err
+}
+
+// Dirname ensures given name is a dirname, with a trailing slash
+func dirname(name string) string {
+	if !strings.HasSuffix(name, "/") {
+		return name + "/"
+	}
+	return name
 }

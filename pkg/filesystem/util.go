@@ -3,6 +3,7 @@ package filesystem
 import (
 	"io"
 	"os"
+	"path"
 	"strings"
 
 	"github.com/ViBiOh/absto/pkg/model"
@@ -41,12 +42,15 @@ func getMode(name string) os.FileMode {
 }
 
 func convertToItem(pathname string, info os.FileInfo) model.Item {
+	name := info.Name()
+
 	return model.Item{
-		Name:     info.Name(),
-		Pathname: pathname,
-		IsDir:    info.IsDir(),
-		Date:     info.ModTime(),
-		Size:     info.Size(),
+		Name:      name,
+		Pathname:  pathname,
+		Extension: strings.ToLower(path.Ext(name)),
+		IsDir:     info.IsDir(),
+		Date:      info.ModTime(),
+		Size:      info.Size(),
 	}
 }
 
