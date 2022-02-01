@@ -166,6 +166,7 @@ func TestConvertToItem(t *testing.T) {
 				info:     readmeInfo,
 			},
 			model.Item{
+				ID:        "f586eea2876d83b41022dafcc2e615003dfdcce3",
 				Name:      "README.md",
 				Pathname:  "/README.md",
 				Extension: ".md",
@@ -235,5 +236,16 @@ func TestConvertError(t *testing.T) {
 				t.Errorf("convertError() = %v, want %v", got, tc.want)
 			}
 		})
+	}
+}
+
+func BenchmarkConverToItem(b *testing.B) {
+	info, err := os.Stat("utils_test.go")
+	if err != nil {
+		b.Error(err)
+	}
+
+	for i := 0; i < b.N; i++ {
+		convertToItem("/pkg/filesystem/utils_test.go", info)
 	}
 }

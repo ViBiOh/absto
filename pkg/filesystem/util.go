@@ -45,6 +45,7 @@ func convertToItem(pathname string, info os.FileInfo) model.Item {
 	name := info.Name()
 
 	return model.Item{
+		ID:        model.Sha(pathname),
 		Name:      name,
 		Pathname:  pathname,
 		Extension: strings.ToLower(path.Ext(name)),

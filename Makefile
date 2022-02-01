@@ -7,6 +7,12 @@ endif
 
 PACKAGES ?= ./...
 
+MAIN_SOURCE = cmd/main.go
+MAIN_RUNNER = go run $(MAIN_SOURCE)
+ifeq ($(DEBUG), true)
+	MAIN_RUNNER = dlv debug $(MAIN_SOURCE) --
+endif
+
 .DEFAULT_GOAL := app
 
 ## help: Display list of commands
@@ -65,3 +71,8 @@ test:
 .PHONY: bench
 bench:
 	go test $(PACKAGES) -bench . -benchmem -run Benchmark.*
+
+## run: Locally run the application, e.g. node index.js, python -m myapp, go run myapp etc ...
+.PHONY: run
+run:
+	$(MAIN_RUNNER)

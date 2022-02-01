@@ -71,7 +71,11 @@ func (a App) WithIgnoreFn(ignoreFn func(model.Item) bool) model.Storage {
 
 // Path return full path of pathname
 func (a App) Path(pathname string) string {
-	return path.Join(a.rootDirectory, pathname)
+	if strings.HasPrefix(pathname, "/") {
+		return a.rootDirectory + pathname
+	}
+
+	return a.rootDirectory + "/" + pathname
 }
 
 // Info provide metadata about given pathname
@@ -164,7 +168,7 @@ func (a App) UpdateDate(pathname string, date time.Time) error {
 
 // Walk browses item recursively
 func (a App) Walk(pathname string, walkFn func(model.Item) error) error {
-	pathname = path.Join(a.rootDirectory, pathname)
+	pathname = a.Path(pathname)
 
 	return convertError(filepath.Walk(pathname, func(path string, info os.FileInfo, err error) error {
 		if err != nil {

@@ -10,10 +10,12 @@ import (
 
 func convertToItem(info minio.ObjectInfo) model.Item {
 	name := path.Base(info.Key)
+	pathname := "/" + strings.TrimSuffix(info.Key, "/")
 
 	return model.Item{
+		ID:        model.Sha(pathname),
 		Name:      name,
-		Pathname:  "/" + strings.TrimSuffix(info.Key, "/"),
+		Pathname:  pathname,
 		Extension: strings.ToLower(path.Ext(name)),
 		IsDir:     strings.HasSuffix(info.Key, "/"),
 		Date:      info.LastModified,
