@@ -60,7 +60,7 @@ func convertError(err error) error {
 		return nil
 	}
 
-	if os.IsNotExist(err) {
+	if os.IsNotExist(err) || strings.HasSuffix(err.Error(), "not a directory") {
 		return model.ErrNotExist(err)
 	}
 

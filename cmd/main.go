@@ -29,4 +29,7 @@ func main() {
 	for _, item := range items {
 		fmt.Printf("%+v\n", item)
 	}
+
+	fmt.Println(storage.Info("README.md"))
+	fmt.Println(storage.Info("README.md/not_a_dir"))
 }
