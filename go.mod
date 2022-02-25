@@ -4,7 +4,7 @@ go 1.17
 
 require (
 	github.com/ViBiOh/flags v0.0.1
-	github.com/minio/minio-go/v7 v7.0.22
+	github.com/minio/minio-go/v7 v7.0.23
 )
 
 require (
