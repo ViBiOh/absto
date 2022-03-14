@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log"
@@ -21,7 +22,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	items, err := storage.List("")
+	items, err := storage.List(context.Background(), "")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -30,6 +31,6 @@ func main() {
 		fmt.Printf("%+v\n", item)
 	}
 
-	fmt.Println(storage.Info("README.md"))
-	fmt.Println(storage.Info("README.md/not_a_dir"))
+	fmt.Println(storage.Info(context.Background(), "README.md"))
+	fmt.Println(storage.Info(context.Background(), "README.md/not_a_dir"))
 }

@@ -5,6 +5,7 @@ go 1.17
 require (
 	github.com/ViBiOh/flags v0.0.1
 	github.com/minio/minio-go/v7 v7.0.23
+	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211
 )
 
 require (

@@ -2,6 +2,7 @@ package filesystem
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -79,7 +80,7 @@ func (a App) Path(pathname string) string {
 }
 
 // Info provide metadata about given pathname
-func (a App) Info(pathname string) (model.Item, error) {
+func (a App) Info(_ context.Context, pathname string) (model.Item, error) {
 	if err := checkPathname(pathname); err != nil {
 		return model.Item{}, convertError(err)
 	}
@@ -95,7 +96,7 @@ func (a App) Info(pathname string) (model.Item, error) {
 }
 
 // List items in the storage
-func (a App) List(pathname string) ([]model.Item, error) {
+func (a App) List(_ context.Context, pathname string) ([]model.Item, error) {
 	if err := checkPathname(pathname); err != nil {
 		return nil, convertError(err)
 	}
@@ -126,7 +127,7 @@ func (a App) List(pathname string) ([]model.Item, error) {
 }
 
 // WriteTo with content from reader to pathname
-func (a App) WriteTo(pathname string, reader io.Reader) error {
+func (a App) WriteTo(_ context.Context, pathname string, reader io.Reader) error {
 	if err := checkPathname(pathname); err != nil {
 		return convertError(err)
 	}
@@ -148,7 +149,7 @@ func (a App) WriteTo(pathname string, reader io.Reader) error {
 }
 
 // ReadFrom reads content from given pathname
-func (a App) ReadFrom(pathname string) (io.ReadSeekCloser, error) {
+func (a App) ReadFrom(_ context.Context, pathname string) (io.ReadSeekCloser, error) {
 	if err := checkPathname(pathname); err != nil {
 		return nil, convertError(err)
 	}
@@ -158,7 +159,7 @@ func (a App) ReadFrom(pathname string) (io.ReadSeekCloser, error) {
 }
 
 // UpdateDate update date from given value
-func (a App) UpdateDate(pathname string, date time.Time) error {
+func (a App) UpdateDate(_ context.Context, pathname string, date time.Time) error {
 	if err := checkPathname(pathname); err != nil {
 		return convertError(err)
 	}
@@ -167,7 +168,7 @@ func (a App) UpdateDate(pathname string, date time.Time) error {
 }
 
 // Walk browses item recursively
-func (a App) Walk(pathname string, walkFn func(model.Item) error) error {
+func (a App) Walk(_ context.Context, pathname string, walkFn func(model.Item) error) error {
 	pathname = a.Path(pathname)
 
 	return convertError(filepath.Walk(pathname, func(path string, info os.FileInfo, err error) error {
@@ -188,7 +189,7 @@ func (a App) Walk(pathname string, walkFn func(model.Item) error) error {
 }
 
 // CreateDir container in storage
-func (a App) CreateDir(name string) error {
+func (a App) CreateDir(_ context.Context, name string) error {
 	if err := checkPathname(name); err != nil {
 		return convertError(err)
 	}
@@ -197,7 +198,7 @@ func (a App) CreateDir(name string) error {
 }
 
 // Rename file or directory from storage
-func (a App) Rename(oldName, newName string) error {
+func (a App) Rename(ctx context.Context, oldName, newName string) error {
 	if err := checkPathname(oldName); err != nil {
 		return convertError(err)
 	}
@@ -207,9 +208,9 @@ func (a App) Rename(oldName, newName string) error {
 	}
 
 	newDirPath := path.Dir(strings.TrimSuffix(newName, "/"))
-	if _, err := a.Info(newDirPath); err != nil {
+	if _, err := a.Info(ctx, newDirPath); err != nil {
 		if model.IsNotExist(err) {
-			if err = a.CreateDir(newDirPath); err != nil {
+			if err = a.CreateDir(ctx, newDirPath); err != nil {
 				return convertError(err)
 			}
 		} else {
@@ -221,7 +222,7 @@ func (a App) Rename(oldName, newName string) error {
 }
 
 // Remove file or directory from storage
-func (a App) Remove(pathname string) error {
+func (a App) Remove(_ context.Context, pathname string) error {
 	if err := checkPathname(pathname); err != nil {
 		return convertError(err)
 	}

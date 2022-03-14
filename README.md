@@ -6,16 +6,16 @@ Abstraction of file storage for golang (currently for filesystem and S3).
 
 ```bash
 Usage of absto:
-  -accessKey string
-        [s3] Storage Object Access Key {ABSTO_ACCESS_KEY}
-  -bucket string
-        [s3] Storage Object Bucket {ABSTO_BUCKET}
-  -directory string
-        [filesystem] Path to directory {ABSTO_DIRECTORY} (default "/data")
-  -endpoint string
-        [s3] Storage Object endpoint {ABSTO_ENDPOINT}
-  -sSL
-        [s3] Use SSL {ABSTO_SSL} (default true)
-  -secretAccess string
-        [s3] Storage Object Secret Access {ABSTO_SECRET_ACCESS}
+  -fileSystemDirectory /data
+        [filesystem] Path to directory. Default is dynamic. /data on a server and Current Working Directory in a terminal. {ABSTO_FILE_SYSTEM_DIRECTORY} (default "/Users/macbook/code/absto")
+  -objectAccessKey string
+        [s3] Storage Object Access Key {ABSTO_OBJECT_ACCESS_KEY}
+  -objectBucket string
+        [s3] Storage Object Bucket {ABSTO_OBJECT_BUCKET}
+  -objectEndpoint string
+        [s3] Storage Object endpoint {ABSTO_OBJECT_ENDPOINT}
+  -objectSSL
+        [s3] Use SSL {ABSTO_OBJECT_SSL} (default true)
+  -objectSecretAccess string
+        [s3] Storage Object Secret Access {ABSTO_OBJECT_SECRET_ACCESS}
 ```
