@@ -8,6 +8,7 @@ import (
 	"github.com/ViBiOh/absto/pkg/filesystem"
 	"github.com/ViBiOh/absto/pkg/model"
 	"github.com/ViBiOh/absto/pkg/s3"
+	"github.com/ViBiOh/absto/pkg/telemetry"
 	"github.com/ViBiOh/flags"
 	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/term"
@@ -45,20 +46,21 @@ func Flags(fs *flag.FlagSet, prefix string, overrides ...flags.Override) Config 
 }
 
 // New creates new Storage from Config
-func New(config Config, tracer trace.Tracer) (model.Storage, error) {
+func New(config Config, tracer trace.Tracer) (storage model.Storage, err error) {
 	endpoint := strings.TrimSpace(*config.endpoint)
 	if len(endpoint) != 0 {
-		var opts []s3.Option
-		if tracer != nil {
-			opts = append(opts, s3.WithTracer(tracer))
-		}
-
-		return s3.New(endpoint, strings.TrimSpace(*config.accessKey), *config.secretAccess, strings.TrimSpace(*config.bucket), *config.useSSL, opts...)
+		storage, err = s3.New(endpoint, strings.TrimSpace(*config.accessKey), *config.secretAccess, strings.TrimSpace(*config.bucket), *config.useSSL)
+	} else {
+		storage, err = filesystem.New(strings.TrimSpace(*config.directory))
 	}
 
-	var opts []filesystem.Option
+	if err != nil {
+		return
+	}
+
 	if tracer != nil {
-		opts = append(opts, filesystem.WithTracer(tracer))
+		storage = telemetry.New(storage, tracer)
 	}
-	return filesystem.New(strings.TrimSpace(*config.directory), opts...)
+
+	return
 }
