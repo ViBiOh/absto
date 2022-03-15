@@ -23,18 +23,6 @@ func convertToItem(info minio.ObjectInfo) model.Item {
 	}
 }
 
-func convertError(err error) error {
-	if err == nil {
-		return err
-	}
-
-	if strings.Contains(err.Error(), "The specified key does not exist") {
-		return model.ErrNotExist(err)
-	}
-
-	return err
-}
-
 // Dirname ensures given name is a dirname, with a trailing slash
 func dirname(name string) string {
 	if !strings.HasSuffix(name, "/") {

@@ -30,4 +30,5 @@ type Storage interface {
 	Rename(ctx context.Context, oldName, newName string) error
 	Remove(ctx context.Context, pathname string) error
 	UpdateDate(ctx context.Context, pathname string, date time.Time) error
+	ConvertError(err error) error
 }

@@ -40,7 +40,7 @@ func New(directory string) (App, error) {
 
 	info, err := os.Stat(rootDirectory)
 	if err != nil {
-		return App{}, convertError(err)
+		return App{}, App{}.ConvertError(err)
 	}
 
 	if !info.IsDir() {
@@ -82,14 +82,14 @@ func (a App) Path(pathname string) string {
 // Info provide metadata about given pathname
 func (a App) Info(ctx context.Context, pathname string) (model.Item, error) {
 	if err := checkPathname(pathname); err != nil {
-		return model.Item{}, convertError(err)
+		return model.Item{}, a.ConvertError(err)
 	}
 
 	fullpath := a.Path(pathname)
 
 	info, err := os.Stat(fullpath)
 	if err != nil {
-		return model.Item{}, convertError(err)
+		return model.Item{}, a.ConvertError(err)
 	}
 
 	return convertToItem(a.getRelativePath(fullpath), info), nil
@@ -98,14 +98,14 @@ func (a App) Info(ctx context.Context, pathname string) (model.Item, error) {
 // List items in the storage
 func (a App) List(ctx context.Context, pathname string) ([]model.Item, error) {
 	if err := checkPathname(pathname); err != nil {
-		return nil, convertError(err)
+		return nil, a.ConvertError(err)
 	}
 
 	fullpath := a.Path(pathname)
 
 	files, err := os.ReadDir(fullpath)
 	if err != nil {
-		return nil, convertError(err)
+		return nil, a.ConvertError(err)
 	}
 
 	var items []model.Item
@@ -129,12 +129,12 @@ func (a App) List(ctx context.Context, pathname string) ([]model.Item, error) {
 // WriteTo with content from reader to pathname
 func (a App) WriteTo(ctx context.Context, pathname string, reader io.Reader) error {
 	if err := checkPathname(pathname); err != nil {
-		return convertError(err)
+		return a.ConvertError(err)
 	}
 
 	writer, err := a.getWritableFile(pathname)
 	if err != nil {
-		return convertError(err)
+		return a.ConvertError(err)
 	}
 
 	buffer := model.BufferPool.Get().(*bytes.Buffer)
@@ -142,7 +142,7 @@ func (a App) WriteTo(ctx context.Context, pathname string, reader io.Reader) err
 
 	_, err = io.CopyBuffer(writer, reader, buffer.Bytes())
 	if err != nil {
-		err = convertError(err)
+		err = a.ConvertError(err)
 	}
 
 	return model.HandleClose(writer, err)
@@ -151,27 +151,27 @@ func (a App) WriteTo(ctx context.Context, pathname string, reader io.Reader) err
 // ReadFrom reads content from given pathname
 func (a App) ReadFrom(ctx context.Context, pathname string) (io.ReadSeekCloser, error) {
 	if err := checkPathname(pathname); err != nil {
-		return nil, convertError(err)
+		return nil, a.ConvertError(err)
 	}
 
 	output, err := a.getFile(pathname, os.O_RDONLY)
-	return output, convertError(err)
+	return output, a.ConvertError(err)
 }
 
 // UpdateDate update date from given value
 func (a App) UpdateDate(ctx context.Context, pathname string, date time.Time) error {
 	if err := checkPathname(pathname); err != nil {
-		return convertError(err)
+		return a.ConvertError(err)
 	}
 
-	return convertError(os.Chtimes(a.Path(pathname), date, date))
+	return a.ConvertError(os.Chtimes(a.Path(pathname), date, date))
 }
 
 // Walk browses item recursively
 func (a App) Walk(ctx context.Context, pathname string, walkFn func(model.Item) error) error {
 	pathname = a.Path(pathname)
 
-	return convertError(filepath.Walk(pathname, func(path string, info os.FileInfo, err error) error {
+	return a.ConvertError(filepath.Walk(pathname, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
@@ -191,41 +191,54 @@ func (a App) Walk(ctx context.Context, pathname string, walkFn func(model.Item) 
 // CreateDir container in storage
 func (a App) CreateDir(ctx context.Context, name string) error {
 	if err := checkPathname(name); err != nil {
-		return convertError(err)
+		return a.ConvertError(err)
 	}
 
-	return convertError(os.MkdirAll(a.Path(name), 0o700))
+	return a.ConvertError(os.MkdirAll(a.Path(name), 0o700))
 }
 
 // Rename file or directory from storage
 func (a App) Rename(ctx context.Context, oldName, newName string) error {
 	if err := checkPathname(oldName); err != nil {
-		return convertError(err)
+		return a.ConvertError(err)
 	}
 
 	if err := checkPathname(newName); err != nil {
-		return convertError(err)
+		return a.ConvertError(err)
 	}
 
 	newDirPath := path.Dir(strings.TrimSuffix(newName, "/"))
 	if _, err := a.Info(ctx, newDirPath); err != nil {
 		if model.IsNotExist(err) {
 			if err = a.CreateDir(ctx, newDirPath); err != nil {
-				return convertError(err)
+				return a.ConvertError(err)
 			}
 		} else {
 			return fmt.Errorf("unable to check if new directory exists: %s", err)
 		}
 	}
 
-	return convertError(os.Rename(a.Path(oldName), a.Path(newName)))
+	return a.ConvertError(os.Rename(a.Path(oldName), a.Path(newName)))
 }
 
 // Remove file or directory from storage
 func (a App) Remove(ctx context.Context, pathname string) error {
 	if err := checkPathname(pathname); err != nil {
-		return convertError(err)
+		return a.ConvertError(err)
 	}
 
-	return convertError(os.RemoveAll(a.Path(pathname)))
+	return a.ConvertError(os.RemoveAll(a.Path(pathname)))
+}
+
+// ConvertError with the appropriate type
+func (a App) ConvertError(err error) error {
+	if err == nil {
+		return nil
+	}
+
+	if os.IsNotExist(err) || strings.HasSuffix(err.Error(), "not a directory") {
+		return model.ErrNotExist(err)
+	}
+
+	return err
 }

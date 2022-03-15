@@ -54,15 +54,3 @@ func convertToItem(pathname string, info os.FileInfo) model.Item {
 		Size:      info.Size(),
 	}
 }
-
-func convertError(err error) error {
-	if err == nil {
-		return nil
-	}
-
-	if os.IsNotExist(err) || strings.HasSuffix(err.Error(), "not a directory") {
-		return model.ErrNotExist(err)
-	}
-
-	return err
-}

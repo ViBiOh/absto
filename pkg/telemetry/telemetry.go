@@ -139,3 +139,8 @@ func (a App) Remove(ctx context.Context, pathname string) error {
 
 	return a.storage.Remove(ctx, pathname)
 }
+
+// ConvertError with the appropriate type
+func (a App) ConvertError(err error) error {
+	return a.ConvertError(err)
+}

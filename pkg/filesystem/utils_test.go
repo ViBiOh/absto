@@ -222,7 +222,7 @@ func TestConvertError(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.intention, func(t *testing.T) {
 			failed := false
-			got := convertError(tc.args.err)
+			got := App{}.ConvertError(tc.args.err)
 
 			if tc.want == nil && got != nil {
 				failed = true
