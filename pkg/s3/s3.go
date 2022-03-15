@@ -179,7 +179,7 @@ func (a App) ReadFrom(ctx context.Context, pathname string) (io.ReadSeekCloser, 
 func (a App) UpdateDate(ctx context.Context, pathname string, date time.Time) error {
 	if a.tracer != nil {
 		var span trace.Span
-		ctx, span = a.tracer.Start(ctx, "updateDate")
+		_, span = a.tracer.Start(ctx, "updateDate")
 		defer span.End()
 	}
 
@@ -271,11 +271,15 @@ func (a App) Remove(ctx context.Context, pathname string) error {
 		defer span.End()
 	}
 
-	return a.Walk(ctx, pathname, func(item model.Item) error {
+	if err := a.Walk(ctx, pathname, func(item model.Item) error {
 		if err := a.client.RemoveObject(ctx, a.bucket, a.Path(item.Pathname), minio.RemoveObjectOptions{}); err != nil {
-			return convertError(fmt.Errorf("unable to delete object: %s", err))
+			return convertError(fmt.Errorf("unable to delete object `%s`: %s", a.Path(item.Pathname), err))
 		}
 
 		return nil
-	})
+	}); err != nil {
+		return err
+	}
+
+	return a.client.RemoveObject(ctx, a.bucket, a.Path(pathname), minio.RemoveObjectOptions{})
 }
