@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/ViBiOh/absto/pkg/absto"
 )
@@ -31,6 +32,9 @@ func main() {
 		fmt.Printf("%+v\n", item)
 	}
 
-	fmt.Println(storage.Info(context.Background(), "README.md"))
-	fmt.Println(storage.Info(context.Background(), "README.md/not_a_dir"))
+	fmt.Println(storage.CreateDir(context.Background(), "/test"))
+	fmt.Println(storage.WriteTo(context.Background(), "/test/example.txt", strings.NewReader("Empty content")))
+	fmt.Println(storage.WriteTo(context.Background(), "/test/second.txt", strings.NewReader("Empty content second")))
+	fmt.Println(storage.Rename(context.Background(), "/test/", "/renamed/"))
+	fmt.Println(storage.Rename(context.Background(), "/renamed/example.txt", "/new/test.txt"))
 }

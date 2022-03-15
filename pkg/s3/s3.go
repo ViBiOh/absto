@@ -177,6 +177,10 @@ func (a App) Rename(ctx context.Context, oldName, newName string) error {
 	return a.Walk(ctx, oldRoot, func(item model.Item) error {
 		pathname := a.Path(item.Pathname)
 
+		if item.IsDir {
+			pathname += "/"
+		}
+
 		_, err := a.client.CopyObject(ctx, minio.CopyDestOptions{
 			Bucket: a.bucket,
 			Object: strings.Replace(pathname, oldRoot, newRoot, -1),
