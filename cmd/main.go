@@ -17,7 +17,7 @@ func main() {
 
 	fmt.Println(fs.Parse(os.Args[1:]))
 
-	storage, err := absto.New(config)
+	storage, err := absto.New(config, nil)
 	if err != nil {
 		log.Fatal(err)
 	}

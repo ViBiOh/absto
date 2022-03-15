@@ -9,9 +9,9 @@ import (
 	"time"
 
 	"github.com/ViBiOh/absto/pkg/model"
-
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // Name of the storage implementation
@@ -19,15 +19,27 @@ const Name = "s3"
 
 var _ model.Storage = App{}
 
+// Option for configuring client
+type Option func(App) App
+
+// WithTracer add open telemetry tracer to context
+func WithTracer(tracer trace.Tracer) func(App) App {
+	return func(a App) App {
+		a.tracer = tracer
+		return a
+	}
+}
+
 // App of package
 type App struct {
 	client   *minio.Client
+	tracer   trace.Tracer
 	ignoreFn func(model.Item) bool
 	bucket   string
 }
 
 // New creates new App from Config
-func New(endpoint, accessKey, secretAccess, bucket string, useSSL bool) (App, error) {
+func New(endpoint, accessKey, secretAccess, bucket string, useSSL bool, opts ...Option) (App, error) {
 	if len(endpoint) == 0 {
 		return App{}, nil
 	}
@@ -40,10 +52,16 @@ func New(endpoint, accessKey, secretAccess, bucket string, useSSL bool) (App, er
 		return App{}, fmt.Errorf("unable to create minio client: %s", err)
 	}
 
-	return App{
+	app := App{
 		client: client,
 		bucket: bucket,
-	}, nil
+	}
+
+	for _, opt := range opts {
+		app = opt(app)
+	}
+
+	return app, nil
 }
 
 // Enabled checks that requirements are met
@@ -70,6 +88,12 @@ func (a App) Path(pathname string) string {
 
 // Info provide metadata about given pathname
 func (a App) Info(ctx context.Context, pathname string) (model.Item, error) {
+	if a.tracer != nil {
+		var span trace.Span
+		ctx, span = a.tracer.Start(ctx, "info")
+		defer span.End()
+	}
+
 	realPathname := a.Path(pathname)
 
 	if realPathname == "" {
@@ -90,6 +114,12 @@ func (a App) Info(ctx context.Context, pathname string) (model.Item, error) {
 
 // List items in the storage
 func (a App) List(ctx context.Context, pathname string) ([]model.Item, error) {
+	if a.tracer != nil {
+		var span trace.Span
+		ctx, span = a.tracer.Start(ctx, "list")
+		defer span.End()
+	}
+
 	realPathname := a.Path(pathname)
 	baseRealPathname := path.Base(realPathname)
 
@@ -116,6 +146,12 @@ func (a App) List(ctx context.Context, pathname string) ([]model.Item, error) {
 
 // WriteTo with content from reader to pathname
 func (a App) WriteTo(ctx context.Context, pathname string, reader io.Reader) error {
+	if a.tracer != nil {
+		var span trace.Span
+		ctx, span = a.tracer.Start(ctx, "writeTo")
+		defer span.End()
+	}
+
 	if _, err := a.client.PutObject(ctx, a.bucket, a.Path(pathname), reader, -1, minio.PutObjectOptions{}); err != nil {
 		return fmt.Errorf("unable to put object: %s", err)
 	}
@@ -125,6 +161,12 @@ func (a App) WriteTo(ctx context.Context, pathname string, reader io.Reader) err
 
 // ReadFrom reads content from given pathname
 func (a App) ReadFrom(ctx context.Context, pathname string) (io.ReadSeekCloser, error) {
+	if a.tracer != nil {
+		var span trace.Span
+		ctx, span = a.tracer.Start(ctx, "readFrom")
+		defer span.End()
+	}
+
 	object, err := a.client.GetObject(ctx, a.bucket, a.Path(pathname), minio.GetObjectOptions{})
 	if err != nil {
 		return nil, convertError(fmt.Errorf("unable to get object: %s", err))
@@ -135,12 +177,24 @@ func (a App) ReadFrom(ctx context.Context, pathname string) (io.ReadSeekCloser, 
 
 // UpdateDate update date from given value
 func (a App) UpdateDate(ctx context.Context, pathname string, date time.Time) error {
+	if a.tracer != nil {
+		var span trace.Span
+		ctx, span = a.tracer.Start(ctx, "updateDate")
+		defer span.End()
+	}
+
 	// TODO
 	return nil
 }
 
 // Walk browses item recursively
 func (a App) Walk(ctx context.Context, pathname string, walkFn func(model.Item) error) error {
+	if a.tracer != nil {
+		var span trace.Span
+		ctx, span = a.tracer.Start(ctx, "walk")
+		defer span.End()
+	}
+
 	objectsCh := a.client.ListObjects(ctx, a.bucket, minio.ListObjectsOptions{
 		Prefix:    a.Path(pathname),
 		Recursive: true,
@@ -162,6 +216,12 @@ func (a App) Walk(ctx context.Context, pathname string, walkFn func(model.Item) 
 
 // CreateDir container in storage
 func (a App) CreateDir(ctx context.Context, name string) error {
+	if a.tracer != nil {
+		var span trace.Span
+		ctx, span = a.tracer.Start(ctx, "createDir")
+		defer span.End()
+	}
+
 	_, err := a.client.PutObject(ctx, a.bucket, dirname(a.Path(name)), strings.NewReader(""), 0, minio.PutObjectOptions{})
 	if err != nil {
 		return convertError(fmt.Errorf("unable to create directory: %s", err))
@@ -172,6 +232,12 @@ func (a App) CreateDir(ctx context.Context, name string) error {
 
 // Rename file or directory from storage
 func (a App) Rename(ctx context.Context, oldName, newName string) error {
+	if a.tracer != nil {
+		var span trace.Span
+		ctx, span = a.tracer.Start(ctx, "rename")
+		defer span.End()
+	}
+
 	oldRoot := a.Path(oldName)
 	newRoot := a.Path(newName)
 
@@ -199,6 +265,12 @@ func (a App) Rename(ctx context.Context, oldName, newName string) error {
 
 // Remove file or directory from storage
 func (a App) Remove(ctx context.Context, pathname string) error {
+	if a.tracer != nil {
+		var span trace.Span
+		ctx, span = a.tracer.Start(ctx, "remove")
+		defer span.End()
+	}
+
 	return a.Walk(ctx, pathname, func(item model.Item) error {
 		if err := a.client.RemoveObject(ctx, a.bucket, a.Path(item.Pathname), minio.RemoveObjectOptions{}); err != nil {
 			return convertError(fmt.Errorf("unable to delete object: %s", err))

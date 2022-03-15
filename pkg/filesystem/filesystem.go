@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/ViBiOh/absto/pkg/model"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // Name of the storage implementation
@@ -23,15 +24,27 @@ var _ model.Storage = App{}
 // ErrRelativePath occurs when path is relative (contains ".."")
 var ErrRelativePath = errors.New("pathname contains relatives paths")
 
+// Option for configuring client
+type Option func(App) App
+
+// WithTracer add open telemetry tracer to context
+func WithTracer(tracer trace.Tracer) func(App) App {
+	return func(a App) App {
+		a.tracer = tracer
+		return a
+	}
+}
+
 // App of the package
 type App struct {
+	tracer        trace.Tracer
 	ignoreFn      func(model.Item) bool
 	rootDirectory string
 	rootDirname   string
 }
 
 // New creates new App from Config
-func New(directory string) (App, error) {
+func New(directory string, opts ...Option) (App, error) {
 	rootDirectory := strings.TrimSuffix(directory, "/")
 
 	if len(rootDirectory) == 0 {
@@ -47,10 +60,16 @@ func New(directory string) (App, error) {
 		return App{}, fmt.Errorf("path %s is not a directory", rootDirectory)
 	}
 
-	return App{
+	app := App{
 		rootDirectory: rootDirectory,
 		rootDirname:   info.Name(),
-	}, nil
+	}
+
+	for _, opt := range opts {
+		app = opt(app)
+	}
+
+	return app, nil
 }
 
 // Enabled checks that requirements are met
@@ -80,7 +99,13 @@ func (a App) Path(pathname string) string {
 }
 
 // Info provide metadata about given pathname
-func (a App) Info(_ context.Context, pathname string) (model.Item, error) {
+func (a App) Info(ctx context.Context, pathname string) (model.Item, error) {
+	if a.tracer != nil {
+		var span trace.Span
+		_, span = a.tracer.Start(ctx, "info")
+		defer span.End()
+	}
+
 	if err := checkPathname(pathname); err != nil {
 		return model.Item{}, convertError(err)
 	}
@@ -96,7 +121,13 @@ func (a App) Info(_ context.Context, pathname string) (model.Item, error) {
 }
 
 // List items in the storage
-func (a App) List(_ context.Context, pathname string) ([]model.Item, error) {
+func (a App) List(ctx context.Context, pathname string) ([]model.Item, error) {
+	if a.tracer != nil {
+		var span trace.Span
+		_, span = a.tracer.Start(ctx, "list")
+		defer span.End()
+	}
+
 	if err := checkPathname(pathname); err != nil {
 		return nil, convertError(err)
 	}
@@ -127,7 +158,13 @@ func (a App) List(_ context.Context, pathname string) ([]model.Item, error) {
 }
 
 // WriteTo with content from reader to pathname
-func (a App) WriteTo(_ context.Context, pathname string, reader io.Reader) error {
+func (a App) WriteTo(ctx context.Context, pathname string, reader io.Reader) error {
+	if a.tracer != nil {
+		var span trace.Span
+		_, span = a.tracer.Start(ctx, "writeTo")
+		defer span.End()
+	}
+
 	if err := checkPathname(pathname); err != nil {
 		return convertError(err)
 	}
@@ -149,7 +186,13 @@ func (a App) WriteTo(_ context.Context, pathname string, reader io.Reader) error
 }
 
 // ReadFrom reads content from given pathname
-func (a App) ReadFrom(_ context.Context, pathname string) (io.ReadSeekCloser, error) {
+func (a App) ReadFrom(ctx context.Context, pathname string) (io.ReadSeekCloser, error) {
+	if a.tracer != nil {
+		var span trace.Span
+		_, span = a.tracer.Start(ctx, "readFrom")
+		defer span.End()
+	}
+
 	if err := checkPathname(pathname); err != nil {
 		return nil, convertError(err)
 	}
@@ -159,7 +202,13 @@ func (a App) ReadFrom(_ context.Context, pathname string) (io.ReadSeekCloser, er
 }
 
 // UpdateDate update date from given value
-func (a App) UpdateDate(_ context.Context, pathname string, date time.Time) error {
+func (a App) UpdateDate(ctx context.Context, pathname string, date time.Time) error {
+	if a.tracer != nil {
+		var span trace.Span
+		_, span = a.tracer.Start(ctx, "updateDate")
+		defer span.End()
+	}
+
 	if err := checkPathname(pathname); err != nil {
 		return convertError(err)
 	}
@@ -168,7 +217,13 @@ func (a App) UpdateDate(_ context.Context, pathname string, date time.Time) erro
 }
 
 // Walk browses item recursively
-func (a App) Walk(_ context.Context, pathname string, walkFn func(model.Item) error) error {
+func (a App) Walk(ctx context.Context, pathname string, walkFn func(model.Item) error) error {
+	if a.tracer != nil {
+		var span trace.Span
+		_, span = a.tracer.Start(ctx, "walk")
+		defer span.End()
+	}
+
 	pathname = a.Path(pathname)
 
 	return convertError(filepath.Walk(pathname, func(path string, info os.FileInfo, err error) error {
@@ -189,7 +244,13 @@ func (a App) Walk(_ context.Context, pathname string, walkFn func(model.Item) er
 }
 
 // CreateDir container in storage
-func (a App) CreateDir(_ context.Context, name string) error {
+func (a App) CreateDir(ctx context.Context, name string) error {
+	if a.tracer != nil {
+		var span trace.Span
+		_, span = a.tracer.Start(ctx, "createDir")
+		defer span.End()
+	}
+
 	if err := checkPathname(name); err != nil {
 		return convertError(err)
 	}
@@ -199,6 +260,12 @@ func (a App) CreateDir(_ context.Context, name string) error {
 
 // Rename file or directory from storage
 func (a App) Rename(ctx context.Context, oldName, newName string) error {
+	if a.tracer != nil {
+		var span trace.Span
+		_, span = a.tracer.Start(ctx, "rename")
+		defer span.End()
+	}
+
 	if err := checkPathname(oldName); err != nil {
 		return convertError(err)
 	}
@@ -222,7 +289,13 @@ func (a App) Rename(ctx context.Context, oldName, newName string) error {
 }
 
 // Remove file or directory from storage
-func (a App) Remove(_ context.Context, pathname string) error {
+func (a App) Remove(ctx context.Context, pathname string) error {
+	if a.tracer != nil {
+		var span trace.Span
+		_, span = a.tracer.Start(ctx, "remove")
+		defer span.End()
+	}
+
 	if err := checkPathname(pathname); err != nil {
 		return convertError(err)
 	}
