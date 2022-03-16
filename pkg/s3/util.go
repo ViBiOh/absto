@@ -22,11 +22,3 @@ func convertToItem(info minio.ObjectInfo) model.Item {
 		Size:      info.Size,
 	}
 }
-
-// Dirname ensures given name is a dirname, with a trailing slash
-func dirname(name string) string {
-	if !strings.HasSuffix(name, "/") {
-		return name + "/"
-	}
-	return name
-}

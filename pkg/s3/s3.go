@@ -165,7 +165,7 @@ func (a App) Walk(ctx context.Context, pathname string, walkFn func(model.Item) 
 
 // CreateDir container in storage
 func (a App) CreateDir(ctx context.Context, name string) error {
-	_, err := a.client.PutObject(ctx, a.bucket, dirname(a.Path(name)), strings.NewReader(""), 0, minio.PutObjectOptions{})
+	_, err := a.client.PutObject(ctx, a.bucket, model.Dirname(a.Path(name)), strings.NewReader(""), 0, minio.PutObjectOptions{})
 	if err != nil {
 		return a.ConvertError(fmt.Errorf("unable to create directory: %s", err))
 	}
@@ -182,7 +182,7 @@ func (a App) Rename(ctx context.Context, oldName, newName string) error {
 		pathname := a.Path(item.Pathname)
 
 		if item.IsDir {
-			pathname = dirname(pathname)
+			pathname = model.Dirname(pathname)
 		}
 
 		_, err := a.client.CopyObject(ctx, minio.CopyDestOptions{

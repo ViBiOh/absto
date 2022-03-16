@@ -4,6 +4,7 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -24,7 +25,7 @@ func (s Item) Dir() string {
 		return s.Pathname
 	}
 
-	return filepath.Dir(s.Pathname)
+	return Dirname(filepath.Dir(s.Pathname))
 }
 
 // Sha computes sha1 of given string
@@ -32,4 +33,12 @@ func Sha(name string) string {
 	hasher := sha1.New()
 	_, _ = hasher.Write([]byte(name))
 	return hex.EncodeToString(hasher.Sum(nil))
+}
+
+// Dirname ensures given name is a dirname, with a trailing slash
+func Dirname(name string) string {
+	if !strings.HasSuffix(name, "/") {
+		return name + "/"
+	}
+	return name
 }
