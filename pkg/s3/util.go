@@ -13,7 +13,7 @@ func convertToItem(info minio.ObjectInfo) model.Item {
 	pathname := "/" + info.Key
 
 	return model.Item{
-		ID:        model.Sha(pathname),
+		ID:        model.ID(pathname),
 		Name:      name,
 		Pathname:  pathname,
 		Extension: strings.ToLower(path.Ext(name)),

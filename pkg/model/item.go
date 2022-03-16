@@ -28,11 +28,9 @@ func (s Item) Dir() string {
 	return Dirname(filepath.Dir(s.Pathname))
 }
 
-// Sha computes sha1 of given string
-func Sha(name string) string {
-	hasher := sha1.New()
-	_, _ = hasher.Write([]byte(name))
-	return hex.EncodeToString(hasher.Sum(nil))
+// ID computes id of given pathname
+func ID(pathname string) string {
+	return sha(pathname)
 }
 
 // Dirname ensures given name is a dirname, with a trailing slash
@@ -41,4 +39,10 @@ func Dirname(name string) string {
 		return name + "/"
 	}
 	return name
+}
+
+func sha(name string) string {
+	hasher := sha1.New()
+	_, _ = hasher.Write([]byte(name))
+	return hex.EncodeToString(hasher.Sum(nil))
 }
