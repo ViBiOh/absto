@@ -182,7 +182,7 @@ func (a App) Rename(ctx context.Context, oldName, newName string) error {
 		pathname := a.Path(item.Pathname)
 
 		if item.IsDir {
-			pathname += "/"
+			pathname = dirname(pathname)
 		}
 
 		_, err := a.client.CopyObject(ctx, minio.CopyDestOptions{
