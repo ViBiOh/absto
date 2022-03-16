@@ -20,13 +20,14 @@ var _ model.Storage = App{}
 
 // App of package
 type App struct {
+	partSize uint64
 	client   *minio.Client
 	ignoreFn func(model.Item) bool
 	bucket   string
 }
 
 // New creates new App from Config
-func New(endpoint, accessKey, secretAccess, bucket string, useSSL bool) (App, error) {
+func New(endpoint, accessKey, secretAccess, bucket string, useSSL bool, partSize uint64) (App, error) {
 	if len(endpoint) == 0 {
 		return App{}, nil
 	}
@@ -40,8 +41,9 @@ func New(endpoint, accessKey, secretAccess, bucket string, useSSL bool) (App, er
 	}
 
 	return App{
-		client: client,
-		bucket: bucket,
+		client:   client,
+		bucket:   bucket,
+		partSize: partSize,
 	}, nil
 }
 
@@ -115,7 +117,9 @@ func (a App) List(ctx context.Context, pathname string) ([]model.Item, error) {
 
 // WriteTo with content from reader to pathname
 func (a App) WriteTo(ctx context.Context, pathname string, reader io.Reader) error {
-	if _, err := a.client.PutObject(ctx, a.bucket, a.Path(pathname), reader, -1, minio.PutObjectOptions{}); err != nil {
+	if _, err := a.client.PutObject(ctx, a.bucket, a.Path(pathname), reader, -1, minio.PutObjectOptions{
+		PartSize: a.partSize,
+	}); err != nil {
 		return fmt.Errorf("unable to put object: %s", err)
 	}
 

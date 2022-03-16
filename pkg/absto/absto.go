@@ -23,6 +23,7 @@ type Config struct {
 	secretAccess *string
 	bucket       *string
 	useSSL       *bool
+	partSize     *uint64
 }
 
 // Flags adds flags for configuring package
@@ -42,6 +43,7 @@ func Flags(fs *flag.FlagSet, prefix string, overrides ...flags.Override) Config 
 		secretAccess: flags.New(prefix, "s3", "ObjectSecretAccess").Default("", overrides).Label("Storage Object Secret Access").ToString(fs),
 		bucket:       flags.New(prefix, "s3", "ObjectBucket").Default("", overrides).Label("Storage Object Bucket").ToString(fs),
 		useSSL:       flags.New(prefix, "s3", "ObjectSSL").Default(true, overrides).Label("Use SSL").ToBool(fs),
+		partSize:     flags.New(prefix, "s3", "PartSize").Default(5<<20, overrides).Label("PartSize configuration").ToUint64(fs),
 	}
 }
 
@@ -49,7 +51,7 @@ func Flags(fs *flag.FlagSet, prefix string, overrides ...flags.Override) Config 
 func New(config Config, tracer trace.Tracer) (storage model.Storage, err error) {
 	endpoint := strings.TrimSpace(*config.endpoint)
 	if len(endpoint) != 0 {
-		storage, err = s3.New(endpoint, strings.TrimSpace(*config.accessKey), *config.secretAccess, strings.TrimSpace(*config.bucket), *config.useSSL)
+		storage, err = s3.New(endpoint, strings.TrimSpace(*config.accessKey), *config.secretAccess, strings.TrimSpace(*config.bucket), *config.useSSL, *config.partSize)
 	} else {
 		storage, err = filesystem.New(strings.TrimSpace(*config.directory))
 	}
