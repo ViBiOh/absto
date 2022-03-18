@@ -5,8 +5,8 @@ go 1.17
 require (
 	github.com/ViBiOh/flags v0.0.1
 	github.com/minio/minio-go/v7 v7.0.23
-	go.opentelemetry.io/otel v1.4.1
-	go.opentelemetry.io/otel/trace v1.4.1
+	go.opentelemetry.io/otel v1.5.0
+	go.opentelemetry.io/otel/trace v1.5.0
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211
 )
 
