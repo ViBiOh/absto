@@ -10,7 +10,7 @@ import (
 
 // BufferPool for io.CopyBuffer
 var BufferPool = sync.Pool{
-	New: func() interface{} {
+	New: func() any {
 		return bytes.NewBuffer(make([]byte, 4*1024))
 	},
 }
