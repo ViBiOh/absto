@@ -80,6 +80,16 @@ func (a App) WriteTo(ctx context.Context, pathname string, reader io.Reader) err
 	return a.storage.WriteTo(ctx, pathname, reader)
 }
 
+// WriteSizedTo with content from reader to pathname with known size
+func (a App) WriteSizedTo(ctx context.Context, pathname string, size int64, reader io.Reader) error {
+	var span trace.Span
+	ctx, span = a.tracer.Start(ctx, "writeSizedTo")
+	span.SetAttributes(attribute.String("item", pathname))
+	defer span.End()
+
+	return a.storage.WriteSizedTo(ctx, pathname, size, reader)
+}
+
 // ReadFrom reads content from given pathname
 func (a App) ReadFrom(ctx context.Context, pathname string) (io.ReadSeekCloser, error) {
 	var span trace.Span

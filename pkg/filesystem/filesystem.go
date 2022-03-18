@@ -148,6 +148,11 @@ func (a App) WriteTo(ctx context.Context, pathname string, reader io.Reader) err
 	return model.HandleClose(writer, err)
 }
 
+// WriteSizedTo with content from reader to pathname with known size
+func (a App) WriteSizedTo(ctx context.Context, pathname string, objectSize int64, reader io.Reader) error {
+	return a.WriteTo(ctx, pathname, reader)
+}
+
 // ReadFrom reads content from given pathname
 func (a App) ReadFrom(ctx context.Context, pathname string) (io.ReadSeekCloser, error) {
 	if err := checkPathname(pathname); err != nil {

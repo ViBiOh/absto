@@ -20,10 +20,10 @@ var _ model.Storage = App{}
 
 // App of package
 type App struct {
-	partSize uint64
 	client   *minio.Client
 	ignoreFn func(model.Item) bool
 	bucket   string
+	partSize uint64
 }
 
 // New creates new App from Config
@@ -120,6 +120,15 @@ func (a App) WriteTo(ctx context.Context, pathname string, reader io.Reader) err
 	if _, err := a.client.PutObject(ctx, a.bucket, a.Path(pathname), reader, -1, minio.PutObjectOptions{
 		PartSize: a.partSize,
 	}); err != nil {
+		return fmt.Errorf("unable to put object: %s", err)
+	}
+
+	return nil
+}
+
+// WriteSizedTo with content from reader to pathname with known size
+func (a App) WriteSizedTo(ctx context.Context, pathname string, size int64, reader io.Reader) error {
+	if _, err := a.client.PutObject(ctx, a.bucket, a.Path(pathname), reader, size, minio.PutObjectOptions{}); err != nil {
 		return fmt.Errorf("unable to put object: %s", err)
 	}
 
