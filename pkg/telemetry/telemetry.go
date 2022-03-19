@@ -85,6 +85,7 @@ func (a App) WriteSizedTo(ctx context.Context, pathname string, size int64, read
 	var span trace.Span
 	ctx, span = a.tracer.Start(ctx, "writeSizedTo")
 	span.SetAttributes(attribute.String("item", pathname))
+	span.SetAttributes(attribute.Int64("size", size))
 	defer span.End()
 
 	return a.storage.WriteSizedTo(ctx, pathname, size, reader)
@@ -135,6 +136,7 @@ func (a App) Rename(ctx context.Context, oldName, newName string) error {
 	var span trace.Span
 	ctx, span = a.tracer.Start(ctx, "rename")
 	span.SetAttributes(attribute.String("item", oldName))
+	span.SetAttributes(attribute.String("new", newName))
 	defer span.End()
 
 	return a.storage.Rename(ctx, oldName, newName)
