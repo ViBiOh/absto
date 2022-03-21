@@ -240,7 +240,7 @@ func TestConvertError(t *testing.T) {
 }
 
 func BenchmarkConverToItem(b *testing.B) {
-	info, err := os.Stat("utils_test.go")
+	info, err := os.Stat("util_test.go")
 	if err != nil {
 		b.Error(err)
 	}

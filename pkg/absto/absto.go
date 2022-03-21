@@ -36,14 +36,14 @@ func Flags(fs *flag.FlagSet, prefix string, overrides ...flags.Override) Config 
 	}
 
 	return Config{
-		directory: flags.New(prefix, "filesystem", "FileSystemDirectory").Default(defaultFS, overrides).Label("Path to directory. Default is dynamic. `/data` on a server and Current Working Directory in a terminal.").ToString(fs),
+		directory: flags.String(fs, prefix, "filesystem", "FileSystemDirectory", "Path to directory. Default is dynamic. `/data` on a server and Current Working Directory in a terminal.", defaultFS, overrides),
 
-		endpoint:     flags.New(prefix, "s3", "ObjectEndpoint").Default("", overrides).Label("Storage Object endpoint").ToString(fs),
-		accessKey:    flags.New(prefix, "s3", "ObjectAccessKey").Default("", overrides).Label("Storage Object Access Key").ToString(fs),
-		secretAccess: flags.New(prefix, "s3", "ObjectSecretAccess").Default("", overrides).Label("Storage Object Secret Access").ToString(fs),
-		bucket:       flags.New(prefix, "s3", "ObjectBucket").Default("", overrides).Label("Storage Object Bucket").ToString(fs),
-		useSSL:       flags.New(prefix, "s3", "ObjectSSL").Default(true, overrides).Label("Use SSL").ToBool(fs),
-		partSize:     flags.New(prefix, "s3", "PartSize").Default(5<<20, overrides).Label("PartSize configuration").ToUint64(fs),
+		endpoint:     flags.String(fs, prefix, "s3", "ObjectEndpoint", "Storage Object endpoint", "", overrides),
+		accessKey:    flags.String(fs, prefix, "s3", "ObjectAccessKey", "Storage Object Access Key", "", overrides),
+		secretAccess: flags.String(fs, prefix, "s3", "ObjectSecretAccess", "Storage Object Secret Access", "", overrides),
+		bucket:       flags.String(fs, prefix, "s3", "ObjectBucket", "Storage Object Bucket", "", overrides),
+		useSSL:       flags.Bool(fs, prefix, "s3", "ObjectSSL", "Use SSL", true, overrides),
+		partSize:     flags.Uint64(fs, prefix, "s3", "PartSize", "PartSize configuration", 5<<20, overrides),
 	}
 }
 
