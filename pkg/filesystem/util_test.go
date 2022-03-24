@@ -14,20 +14,17 @@ func TestCheckPathname(t *testing.T) {
 		pathname string
 	}
 
-	cases := []struct {
-		intention string
-		args      args
-		want      error
+	cases := map[string]struct {
+		args args
+		want error
 	}{
-		{
-			"valid",
+		"valid": {
 			args{
 				pathname: "/test",
 			},
 			nil,
 		},
-		{
-			"invalid",
+		"invalid": {
 			args{
 				pathname: "/test/../root",
 			},
@@ -35,8 +32,8 @@ func TestCheckPathname(t *testing.T) {
 		},
 	}
 
-	for _, tc := range cases {
-		t.Run(tc.intention, func(t *testing.T) {
+	for intention, tc := range cases {
+		t.Run(intention, func(t *testing.T) {
 			if got := checkPathname(tc.args.pathname); got != tc.want {
 				t.Errorf("checkPathname() = %t, want %t", got, tc.want)
 			}
@@ -49,14 +46,12 @@ func TestPath(t *testing.T) {
 		pathname string
 	}
 
-	cases := []struct {
-		intention string
-		instance  App
-		args      args
-		want      string
+	cases := map[string]struct {
+		instance App
+		args     args
+		want     string
 	}{
-		{
-			"simple",
+		"simple": {
 			App{
 				rootDirectory: "/home/users",
 			},
@@ -67,8 +62,8 @@ func TestPath(t *testing.T) {
 		},
 	}
 
-	for _, tc := range cases {
-		t.Run(tc.intention, func(t *testing.T) {
+	for intention, tc := range cases {
+		t.Run(intention, func(t *testing.T) {
 			if got := tc.instance.Path(tc.args.pathname); got != tc.want {
 				t.Errorf("Path() = `%s`, want `%s`", got, tc.want)
 			}
@@ -81,14 +76,12 @@ func TestGetRelativePath(t *testing.T) {
 		pathname string
 	}
 
-	cases := []struct {
-		intention string
-		instance  App
-		args      args
-		want      string
+	cases := map[string]struct {
+		instance App
+		args     args
+		want     string
 	}{
-		{
-			"simple",
+		"simple": {
 			App{
 				rootDirectory: "/home/users",
 			},
@@ -99,8 +92,8 @@ func TestGetRelativePath(t *testing.T) {
 		},
 	}
 
-	for _, tc := range cases {
-		t.Run(tc.intention, func(t *testing.T) {
+	for intention, tc := range cases {
+		t.Run(intention, func(t *testing.T) {
 			if got := tc.instance.getRelativePath(tc.args.pathname); got != tc.want {
 				t.Errorf("getRelativePath() = `%s`, want `%s`", got, tc.want)
 			}
@@ -113,20 +106,17 @@ func TestGetMode(t *testing.T) {
 		name string
 	}
 
-	cases := []struct {
-		intention string
-		args      args
-		want      os.FileMode
+	cases := map[string]struct {
+		args args
+		want os.FileMode
 	}{
-		{
-			"directory",
+		"directory": {
 			args{
 				name: "/photos/",
 			},
 			0o700,
 		},
-		{
-			"file",
+		"file": {
 			args{
 				name: "/photo.png",
 			},
@@ -134,8 +124,8 @@ func TestGetMode(t *testing.T) {
 		},
 	}
 
-	for _, tc := range cases {
-		t.Run(tc.intention, func(t *testing.T) {
+	for intention, tc := range cases {
+		t.Run(intention, func(t *testing.T) {
 			if got := getMode(tc.args.name); got != tc.want {
 				t.Errorf("getMode() = %d, want %d", got, tc.want)
 			}
@@ -154,13 +144,11 @@ func TestConvertToItem(t *testing.T) {
 		t.Error(err)
 	}
 
-	cases := []struct {
-		intention string
-		args      args
-		want      model.Item
+	cases := map[string]struct {
+		args args
+		want model.Item
 	}{
-		{
-			"simple",
+		"simple": {
 			args{
 				pathname: "/README.md",
 				info:     readmeInfo,
@@ -177,8 +165,8 @@ func TestConvertToItem(t *testing.T) {
 		},
 	}
 
-	for _, tc := range cases {
-		t.Run(tc.intention, func(t *testing.T) {
+	for intention, tc := range cases {
+		t.Run(intention, func(t *testing.T) {
 			if got := convertToItem(tc.args.pathname, tc.args.info); got != tc.want {
 				t.Errorf("convertToItem() = %+v, want %+v", got, tc.want)
 			}
@@ -191,27 +179,23 @@ func TestConvertError(t *testing.T) {
 		err error
 	}
 
-	cases := []struct {
-		intention string
-		args      args
-		want      error
+	cases := map[string]struct {
+		args args
+		want error
 	}{
-		{
-			"nil",
+		"nil": {
 			args{
 				err: nil,
 			},
 			nil,
 		},
-		{
-			"not exist",
+		"not exist": {
 			args{
 				err: os.ErrNotExist,
 			},
 			model.ErrNotExist(os.ErrNotExist),
 		},
-		{
-			"standard",
+		"standard": {
 			args{
 				err: errors.New("unable to read"),
 			},
@@ -219,8 +203,8 @@ func TestConvertError(t *testing.T) {
 		},
 	}
 
-	for _, tc := range cases {
-		t.Run(tc.intention, func(t *testing.T) {
+	for intention, tc := range cases {
+		t.Run(intention, func(t *testing.T) {
 			failed := false
 			got := App{}.ConvertError(tc.args.err)
 
