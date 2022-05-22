@@ -60,9 +60,7 @@ func New(config Config, tracer trace.Tracer) (storage model.Storage, err error) 
 		return
 	}
 
-	if tracer != nil {
-		storage = telemetry.New(storage, tracer)
-	}
+	storage = telemetry.New(storage, tracer)
 
 	return
 }

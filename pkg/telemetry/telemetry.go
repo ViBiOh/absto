@@ -52,9 +52,7 @@ func (a App) Path(pathname string) string {
 
 // Info provide metadata about given pathname
 func (a App) Info(ctx context.Context, pathname string) (model.Item, error) {
-	var span trace.Span
-	ctx, span = a.tracer.Start(ctx, "info")
-	span.SetAttributes(attribute.String("item", pathname))
+	ctx, span := a.tracer.Start(ctx, "info", trace.WithAttributes(attribute.String("item", pathname)))
 	defer span.End()
 
 	return a.storage.Info(ctx, pathname)
@@ -62,9 +60,7 @@ func (a App) Info(ctx context.Context, pathname string) (model.Item, error) {
 
 // List items in the storage
 func (a App) List(ctx context.Context, pathname string) ([]model.Item, error) {
-	var span trace.Span
-	ctx, span = a.tracer.Start(ctx, "list")
-	span.SetAttributes(attribute.String("item", pathname))
+	ctx, span := a.tracer.Start(ctx, "list", trace.WithAttributes(attribute.String("item", pathname)))
 	defer span.End()
 
 	return a.storage.List(ctx, pathname)
@@ -72,9 +68,7 @@ func (a App) List(ctx context.Context, pathname string) ([]model.Item, error) {
 
 // WriteTo with content from reader to pathname
 func (a App) WriteTo(ctx context.Context, pathname string, reader io.Reader) error {
-	var span trace.Span
-	ctx, span = a.tracer.Start(ctx, "writeTo")
-	span.SetAttributes(attribute.String("item", pathname))
+	ctx, span := a.tracer.Start(ctx, "writeTo", trace.WithAttributes(attribute.String("item", pathname)))
 	defer span.End()
 
 	return a.storage.WriteTo(ctx, pathname, reader)
@@ -82,10 +76,7 @@ func (a App) WriteTo(ctx context.Context, pathname string, reader io.Reader) err
 
 // WriteSizedTo with content from reader to pathname with known size
 func (a App) WriteSizedTo(ctx context.Context, pathname string, size int64, reader io.Reader) error {
-	var span trace.Span
-	ctx, span = a.tracer.Start(ctx, "writeSizedTo")
-	span.SetAttributes(attribute.String("item", pathname))
-	span.SetAttributes(attribute.Int64("size", size))
+	ctx, span := a.tracer.Start(ctx, "writeTo", trace.WithAttributes(attribute.String("item", pathname)), trace.WithAttributes(attribute.Int64("size", size)))
 	defer span.End()
 
 	return a.storage.WriteSizedTo(ctx, pathname, size, reader)
@@ -93,9 +84,7 @@ func (a App) WriteSizedTo(ctx context.Context, pathname string, size int64, read
 
 // ReadFrom reads content from given pathname
 func (a App) ReadFrom(ctx context.Context, pathname string) (io.ReadSeekCloser, error) {
-	var span trace.Span
-	ctx, span = a.tracer.Start(ctx, "readFrom")
-	span.SetAttributes(attribute.String("item", pathname))
+	ctx, span := a.tracer.Start(ctx, "readFrom", trace.WithAttributes(attribute.String("item", pathname)))
 	defer span.End()
 
 	return a.storage.ReadFrom(ctx, pathname)
@@ -103,9 +92,7 @@ func (a App) ReadFrom(ctx context.Context, pathname string) (io.ReadSeekCloser, 
 
 // UpdateDate update date from given value
 func (a App) UpdateDate(ctx context.Context, pathname string, date time.Time) error {
-	var span trace.Span
-	ctx, span = a.tracer.Start(ctx, "info")
-	span.SetAttributes(attribute.String("item", pathname))
+	ctx, span := a.tracer.Start(ctx, "updateDate", trace.WithAttributes(attribute.String("item", pathname)))
 	defer span.End()
 
 	return a.storage.UpdateDate(ctx, pathname, date)
@@ -113,30 +100,23 @@ func (a App) UpdateDate(ctx context.Context, pathname string, date time.Time) er
 
 // Walk browses item recursively
 func (a App) Walk(ctx context.Context, pathname string, walkFn func(model.Item) error) error {
-	var span trace.Span
-	ctx, span = a.tracer.Start(ctx, "info")
-	span.SetAttributes(attribute.String("item", pathname))
+	ctx, span := a.tracer.Start(ctx, "walk", trace.WithAttributes(attribute.String("item", pathname)))
 	defer span.End()
 
 	return a.storage.Walk(ctx, pathname, walkFn)
 }
 
 // CreateDir container in storage
-func (a App) CreateDir(ctx context.Context, name string) error {
-	var span trace.Span
-	ctx, span = a.tracer.Start(ctx, "createDir")
-	span.SetAttributes(attribute.String("item", name))
+func (a App) CreateDir(ctx context.Context, pathname string) error {
+	ctx, span := a.tracer.Start(ctx, "createDir", trace.WithAttributes(attribute.String("item", pathname)))
 	defer span.End()
 
-	return a.storage.CreateDir(ctx, name)
+	return a.storage.CreateDir(ctx, pathname)
 }
 
 // Rename file or directory from storage
 func (a App) Rename(ctx context.Context, oldName, newName string) error {
-	var span trace.Span
-	ctx, span = a.tracer.Start(ctx, "rename")
-	span.SetAttributes(attribute.String("item", oldName))
-	span.SetAttributes(attribute.String("new", newName))
+	ctx, span := a.tracer.Start(ctx, "rename", trace.WithAttributes(attribute.String("item", oldName)), trace.WithAttributes(attribute.String("new", newName)))
 	defer span.End()
 
 	return a.storage.Rename(ctx, oldName, newName)
@@ -144,9 +124,7 @@ func (a App) Rename(ctx context.Context, oldName, newName string) error {
 
 // Remove file or directory from storage
 func (a App) Remove(ctx context.Context, pathname string) error {
-	var span trace.Span
-	ctx, span = a.tracer.Start(ctx, "remove")
-	span.SetAttributes(attribute.String("item", pathname))
+	ctx, span := a.tracer.Start(ctx, "remove", trace.WithAttributes(attribute.String("item", pathname)))
 	defer span.End()
 
 	return a.storage.Remove(ctx, pathname)
