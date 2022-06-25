@@ -12,7 +12,7 @@ updates:
     directory: /
     schedule:
       interval: weekly
-      time: "06:00"
+      time: '06:00'
       day: thursday
     commit-message:
       prefix: chore
