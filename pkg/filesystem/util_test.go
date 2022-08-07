@@ -197,9 +197,9 @@ func TestConvertError(t *testing.T) {
 		},
 		"standard": {
 			args{
-				err: errors.New("unable to read"),
+				err: errors.New("read"),
 			},
-			errors.New("unable to read"),
+			errors.New("read"),
 		},
 	}
 

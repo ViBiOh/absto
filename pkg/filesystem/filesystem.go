@@ -112,7 +112,7 @@ func (a App) List(ctx context.Context, pathname string) ([]model.Item, error) {
 	for _, file := range files {
 		fileInfo, err := file.Info()
 		if err != nil {
-			return nil, fmt.Errorf("unable to read file metadata: %s", err)
+			return nil, fmt.Errorf("read file metadata: %s", err)
 		}
 
 		item := convertToItem(a.getRelativePath(path.Join(fullpath, file.Name())), fileInfo)
@@ -219,7 +219,7 @@ func (a App) Rename(ctx context.Context, oldName, newName string) error {
 				return a.ConvertError(err)
 			}
 		} else {
-			return fmt.Errorf("unable to check if new directory exists: %s", err)
+			return fmt.Errorf("check if new directory exists: %s", err)
 		}
 	}
 
