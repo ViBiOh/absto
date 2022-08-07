@@ -1,6 +1,6 @@
 module github.com/ViBiOh/absto
 
-go 1.18
+go 1.19
 
 require (
 	github.com/ViBiOh/flags v1.1.0
