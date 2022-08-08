@@ -1,7 +1,7 @@
 package model
 
 import (
-	"crypto/sha1"
+	"crypto/sha256"
 	"encoding/hex"
 	"path/filepath"
 	"strings"
@@ -42,7 +42,7 @@ func Dirname(name string) string {
 }
 
 func sha(name string) string {
-	hasher := sha1.New()
+	hasher := sha256.New()
 	_, _ = hasher.Write([]byte(name))
 	return hex.EncodeToString(hasher.Sum(nil))
 }

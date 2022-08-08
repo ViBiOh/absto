@@ -154,7 +154,7 @@ func TestConvertToItem(t *testing.T) {
 				info:     readmeInfo,
 			},
 			model.Item{
-				ID:        "f586eea2876d83b41022dafcc2e615003dfdcce3",
+				ID:        "95e0a42d9d6b5d82bdb3752f4d31f3fe7d0150c6b512bc094985b1a2b24b192b",
 				Name:      "README.md",
 				Pathname:  "/README.md",
 				Extension: ".md",
