@@ -146,8 +146,8 @@ func (a App) ReadFrom(ctx context.Context, pathname string) (io.ReadSeekCloser, 
 }
 
 // UpdateDate update date from given value
-func (a App) UpdateDate(ctx context.Context, pathname string, date time.Time) error {
-	// TODO
+func (a App) UpdateDate(_ context.Context, _ string, _ time.Time) error {
+	// TODO When it will be possible
 	return nil
 }
 

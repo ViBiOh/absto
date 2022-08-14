@@ -80,7 +80,7 @@ func (a App) Path(pathname string) string {
 }
 
 // Info provide metadata about given pathname
-func (a App) Info(ctx context.Context, pathname string) (model.Item, error) {
+func (a App) Info(_ context.Context, pathname string) (model.Item, error) {
 	if err := checkPathname(pathname); err != nil {
 		return model.Item{}, a.ConvertError(err)
 	}
@@ -96,7 +96,7 @@ func (a App) Info(ctx context.Context, pathname string) (model.Item, error) {
 }
 
 // List items in the storage
-func (a App) List(ctx context.Context, pathname string) ([]model.Item, error) {
+func (a App) List(_ context.Context, pathname string) ([]model.Item, error) {
 	if err := checkPathname(pathname); err != nil {
 		return nil, a.ConvertError(err)
 	}
@@ -127,7 +127,7 @@ func (a App) List(ctx context.Context, pathname string) ([]model.Item, error) {
 }
 
 // WriteTo with content from reader to pathname
-func (a App) WriteTo(ctx context.Context, pathname string, reader io.Reader) error {
+func (a App) WriteTo(_ context.Context, pathname string, reader io.Reader) error {
 	if err := checkPathname(pathname); err != nil {
 		return a.ConvertError(err)
 	}
@@ -149,12 +149,12 @@ func (a App) WriteTo(ctx context.Context, pathname string, reader io.Reader) err
 }
 
 // WriteSizedTo with content from reader to pathname with known size
-func (a App) WriteSizedTo(ctx context.Context, pathname string, objectSize int64, reader io.Reader) error {
+func (a App) WriteSizedTo(ctx context.Context, pathname string, _ int64, reader io.Reader) error {
 	return a.WriteTo(ctx, pathname, reader)
 }
 
 // ReadFrom reads content from given pathname
-func (a App) ReadFrom(ctx context.Context, pathname string) (io.ReadSeekCloser, error) {
+func (a App) ReadFrom(_ context.Context, pathname string) (io.ReadSeekCloser, error) {
 	if err := checkPathname(pathname); err != nil {
 		return nil, a.ConvertError(err)
 	}
@@ -164,7 +164,7 @@ func (a App) ReadFrom(ctx context.Context, pathname string) (io.ReadSeekCloser, 
 }
 
 // UpdateDate update date from given value
-func (a App) UpdateDate(ctx context.Context, pathname string, date time.Time) error {
+func (a App) UpdateDate(_ context.Context, pathname string, date time.Time) error {
 	if err := checkPathname(pathname); err != nil {
 		return a.ConvertError(err)
 	}
@@ -173,7 +173,7 @@ func (a App) UpdateDate(ctx context.Context, pathname string, date time.Time) er
 }
 
 // Walk browses item recursively
-func (a App) Walk(ctx context.Context, pathname string, walkFn func(model.Item) error) error {
+func (a App) Walk(_ context.Context, pathname string, walkFn func(model.Item) error) error {
 	pathname = a.Path(pathname)
 
 	return a.ConvertError(filepath.Walk(pathname, func(path string, info os.FileInfo, err error) error {
@@ -194,7 +194,7 @@ func (a App) Walk(ctx context.Context, pathname string, walkFn func(model.Item) 
 }
 
 // CreateDir container in storage
-func (a App) CreateDir(ctx context.Context, name string) error {
+func (a App) CreateDir(_ context.Context, name string) error {
 	if err := checkPathname(name); err != nil {
 		return a.ConvertError(err)
 	}
@@ -227,7 +227,7 @@ func (a App) Rename(ctx context.Context, oldName, newName string) error {
 }
 
 // Remove file or directory from storage
-func (a App) Remove(ctx context.Context, pathname string) error {
+func (a App) Remove(_ context.Context, pathname string) error {
 	if err := checkPathname(pathname); err != nil {
 		return a.ConvertError(err)
 	}
