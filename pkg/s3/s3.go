@@ -37,7 +37,7 @@ func New(endpoint, accessKey, secretAccess, bucket string, useSSL bool, partSize
 		Secure: useSSL,
 	})
 	if err != nil {
-		return App{}, fmt.Errorf("create minio client: %s", err)
+		return App{}, fmt.Errorf("create minio client: %w", err)
 	}
 
 	return App{
@@ -83,7 +83,7 @@ func (a App) Info(ctx context.Context, pathname string) (model.Item, error) {
 
 	info, err := a.client.StatObject(ctx, a.bucket, realPathname, minio.GetObjectOptions{})
 	if err != nil {
-		return model.Item{}, a.ConvertError(fmt.Errorf("stat object: %s", err))
+		return model.Item{}, a.ConvertError(fmt.Errorf("stat object: %w", err))
 	}
 
 	return convertToItem(info), nil
@@ -120,7 +120,7 @@ func (a App) WriteTo(ctx context.Context, pathname string, reader io.Reader) err
 	if _, err := a.client.PutObject(ctx, a.bucket, a.Path(pathname), reader, -1, minio.PutObjectOptions{
 		PartSize: a.partSize,
 	}); err != nil {
-		return fmt.Errorf("put object: %s", err)
+		return fmt.Errorf("put object: %w", err)
 	}
 
 	return nil
@@ -129,7 +129,7 @@ func (a App) WriteTo(ctx context.Context, pathname string, reader io.Reader) err
 // WriteSizedTo with content from reader to pathname with known size
 func (a App) WriteSizedTo(ctx context.Context, pathname string, size int64, reader io.Reader) error {
 	if _, err := a.client.PutObject(ctx, a.bucket, a.Path(pathname), reader, size, minio.PutObjectOptions{}); err != nil {
-		return fmt.Errorf("put object: %s", err)
+		return fmt.Errorf("put object: %w", err)
 	}
 
 	return nil
@@ -139,7 +139,7 @@ func (a App) WriteSizedTo(ctx context.Context, pathname string, size int64, read
 func (a App) ReadFrom(ctx context.Context, pathname string) (io.ReadSeekCloser, error) {
 	object, err := a.client.GetObject(ctx, a.bucket, a.Path(pathname), minio.GetObjectOptions{})
 	if err != nil {
-		return nil, a.ConvertError(fmt.Errorf("get object: %s", err))
+		return nil, a.ConvertError(fmt.Errorf("get object: %w", err))
 	}
 
 	return object, nil
@@ -176,7 +176,7 @@ func (a App) Walk(ctx context.Context, pathname string, walkFn func(model.Item) 
 func (a App) CreateDir(ctx context.Context, name string) error {
 	_, err := a.client.PutObject(ctx, a.bucket, model.Dirname(a.Path(name)), strings.NewReader(""), 0, minio.PutObjectOptions{})
 	if err != nil {
-		return a.ConvertError(fmt.Errorf("create directory: %s", err))
+		return a.ConvertError(fmt.Errorf("create directory: %w", err))
 	}
 
 	return nil
@@ -206,7 +206,7 @@ func (a App) Rename(ctx context.Context, oldName, newName string) error {
 		}
 
 		if err = a.client.RemoveObject(ctx, a.bucket, pathname, minio.RemoveObjectOptions{}); err != nil {
-			return a.ConvertError(fmt.Errorf("delete object: %s", err))
+			return a.ConvertError(fmt.Errorf("delete object: %w", err))
 		}
 
 		return nil
@@ -217,7 +217,7 @@ func (a App) Rename(ctx context.Context, oldName, newName string) error {
 func (a App) Remove(ctx context.Context, pathname string) error {
 	if err := a.Walk(ctx, pathname, func(item model.Item) error {
 		if err := a.client.RemoveObject(ctx, a.bucket, a.Path(item.Pathname), minio.RemoveObjectOptions{}); err != nil {
-			return a.ConvertError(fmt.Errorf("delete object `%s`: %s", a.Path(item.Pathname), err))
+			return a.ConvertError(fmt.Errorf("delete object `%s`: %w", a.Path(item.Pathname), err))
 		}
 
 		return nil
