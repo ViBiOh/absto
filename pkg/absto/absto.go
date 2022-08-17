@@ -14,7 +14,7 @@ import (
 	"golang.org/x/term"
 )
 
-// Config of package
+// Config of package.
 type Config struct {
 	directory *string
 
@@ -26,7 +26,7 @@ type Config struct {
 	partSize     *uint64
 }
 
-// Flags adds flags for configuring package
+// Flags adds flags for configuring package.
 func Flags(fs *flag.FlagSet, prefix string, overrides ...flags.Override) Config {
 	defaultFS := "/data"
 	if term.IsTerminal(int(os.Stdin.Fd())) {
@@ -47,7 +47,7 @@ func Flags(fs *flag.FlagSet, prefix string, overrides ...flags.Override) Config 
 	}
 }
 
-// New creates new Storage from Config
+// New creates new Storage from Config.
 func New(config Config, tracer trace.Tracer) (storage model.Storage, err error) {
 	endpoint := strings.TrimSpace(*config.endpoint)
 	if len(endpoint) != 0 {

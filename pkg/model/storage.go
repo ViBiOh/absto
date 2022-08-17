@@ -8,14 +8,14 @@ import (
 	"time"
 )
 
-// BufferPool for io.CopyBuffer
+// BufferPool for io.CopyBuffer.
 var BufferPool = sync.Pool{
 	New: func() any {
 		return bytes.NewBuffer(make([]byte, 4*1024))
 	},
 }
 
-// Storage describe action on a storage provider
+// Storage describe action on a storage provider.
 type Storage interface {
 	Enabled() bool
 	Name() string
