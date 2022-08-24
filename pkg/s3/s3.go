@@ -13,12 +13,10 @@ import (
 	"github.com/minio/minio-go/v7/pkg/credentials"
 )
 
-// Name of the storage implementation.
 const Name = "s3"
 
 var _ model.Storage = App{}
 
-// App of package.
 type App struct {
 	client   *minio.Client
 	ignoreFn func(model.Item) bool
@@ -26,7 +24,6 @@ type App struct {
 	partSize uint64
 }
 
-// New creates new App from Config.
 func New(endpoint, accessKey, secretAccess, bucket string, useSSL bool, partSize uint64) (App, error) {
 	if len(endpoint) == 0 {
 		return App{}, nil
@@ -47,29 +44,24 @@ func New(endpoint, accessKey, secretAccess, bucket string, useSSL bool, partSize
 	}, nil
 }
 
-// Enabled checks that requirements are met.
 func (a App) Enabled() bool {
 	return a.client != nil
 }
 
-// Name of the sotrage.
 func (a App) Name() string {
 	return Name
 }
 
-// WithIgnoreFn create a new App with given ignoreFn.
 func (a App) WithIgnoreFn(ignoreFn func(model.Item) bool) model.Storage {
 	a.ignoreFn = ignoreFn
 
 	return a
 }
 
-// Path return full path of pathname.
 func (a App) Path(pathname string) string {
 	return strings.TrimPrefix(pathname, "/")
 }
 
-// Info provide metadata about given pathname.
 func (a App) Info(ctx context.Context, pathname string) (model.Item, error) {
 	realPathname := a.Path(pathname)
 
@@ -89,7 +81,6 @@ func (a App) Info(ctx context.Context, pathname string) (model.Item, error) {
 	return convertToItem(info), nil
 }
 
-// List items in the storage.
 func (a App) List(ctx context.Context, pathname string) ([]model.Item, error) {
 	realPathname := a.Path(pathname)
 	baseRealPathname := path.Base(realPathname)
@@ -115,7 +106,6 @@ func (a App) List(ctx context.Context, pathname string) ([]model.Item, error) {
 	return items, nil
 }
 
-// WriteTo with content from reader to pathname.
 func (a App) WriteTo(ctx context.Context, pathname string, reader io.Reader) error {
 	if _, err := a.client.PutObject(ctx, a.bucket, a.Path(pathname), reader, -1, minio.PutObjectOptions{
 		PartSize: a.partSize,
@@ -126,7 +116,6 @@ func (a App) WriteTo(ctx context.Context, pathname string, reader io.Reader) err
 	return nil
 }
 
-// WriteSizedTo with content from reader to pathname with known size.
 func (a App) WriteSizedTo(ctx context.Context, pathname string, size int64, reader io.Reader) error {
 	if _, err := a.client.PutObject(ctx, a.bucket, a.Path(pathname), reader, size, minio.PutObjectOptions{}); err != nil {
 		return fmt.Errorf("put object: %w", err)
@@ -135,7 +124,6 @@ func (a App) WriteSizedTo(ctx context.Context, pathname string, size int64, read
 	return nil
 }
 
-// ReadFrom reads content from given pathname.
 func (a App) ReadFrom(ctx context.Context, pathname string) (io.ReadSeekCloser, error) {
 	object, err := a.client.GetObject(ctx, a.bucket, a.Path(pathname), minio.GetObjectOptions{})
 	if err != nil {
@@ -145,13 +133,10 @@ func (a App) ReadFrom(ctx context.Context, pathname string) (io.ReadSeekCloser, 
 	return object, nil
 }
 
-// UpdateDate update date from given value.
 func (a App) UpdateDate(_ context.Context, _ string, _ time.Time) error {
-	// TODO When it will be possible
 	return nil
 }
 
-// Walk browses item recursively.
 func (a App) Walk(ctx context.Context, pathname string, walkFn func(model.Item) error) error {
 	objectsCh := a.client.ListObjects(ctx, a.bucket, minio.ListObjectsOptions{
 		Prefix:    a.Path(pathname),
@@ -172,7 +157,6 @@ func (a App) Walk(ctx context.Context, pathname string, walkFn func(model.Item) 
 	return nil
 }
 
-// CreateDir container in storage.
 func (a App) CreateDir(ctx context.Context, name string) error {
 	_, err := a.client.PutObject(ctx, a.bucket, model.Dirname(a.Path(name)), strings.NewReader(""), 0, minio.PutObjectOptions{})
 	if err != nil {
@@ -182,7 +166,6 @@ func (a App) CreateDir(ctx context.Context, name string) error {
 	return nil
 }
 
-// Rename file or directory from storage.
 func (a App) Rename(ctx context.Context, oldName, newName string) error {
 	oldRoot := a.Path(oldName)
 	newRoot := a.Path(newName)
@@ -213,7 +196,6 @@ func (a App) Rename(ctx context.Context, oldName, newName string) error {
 	})
 }
 
-// Remove file or directory from storage.
 func (a App) Remove(ctx context.Context, pathname string) error {
 	if err := a.Walk(ctx, pathname, func(item model.Item) error {
 		if err := a.client.RemoveObject(ctx, a.bucket, a.Path(item.Pathname), minio.RemoveObjectOptions{}); err != nil {
@@ -228,7 +210,6 @@ func (a App) Remove(ctx context.Context, pathname string) error {
 	return a.client.RemoveObject(ctx, a.bucket, a.Path(pathname), minio.RemoveObjectOptions{})
 }
 
-// ConvertError with the appropriate type.
 func (a App) ConvertError(err error) error {
 	if err == nil {
 		return err

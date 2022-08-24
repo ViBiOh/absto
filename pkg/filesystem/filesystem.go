@@ -15,22 +15,18 @@ import (
 	"github.com/ViBiOh/absto/pkg/model"
 )
 
-// Name of the storage implementation.
 const Name = "fs"
 
 var _ model.Storage = App{}
 
-// ErrRelativePath occurs when path is relative (contains ".."").
 var ErrRelativePath = errors.New("pathname contains relatives paths")
 
-// App of the package.
 type App struct {
 	ignoreFn      func(model.Item) bool
 	rootDirectory string
 	rootDirname   string
 }
 
-// New creates new App from Config.
 func New(directory string) (App, error) {
 	rootDirectory := strings.TrimSuffix(directory, "/")
 
@@ -53,24 +49,20 @@ func New(directory string) (App, error) {
 	}, nil
 }
 
-// Enabled checks that requirements are met.
 func (a App) Enabled() bool {
 	return len(a.rootDirectory) != 0
 }
 
-// Name of the sotrage.
 func (a App) Name() string {
 	return Name
 }
 
-// WithIgnoreFn create a new App with given ignoreFn.
 func (a App) WithIgnoreFn(ignoreFn func(model.Item) bool) model.Storage {
 	a.ignoreFn = ignoreFn
 
 	return a
 }
 
-// Path return full path of pathname.
 func (a App) Path(pathname string) string {
 	if strings.HasPrefix(pathname, "/") {
 		return a.rootDirectory + pathname
@@ -79,7 +71,6 @@ func (a App) Path(pathname string) string {
 	return a.rootDirectory + "/" + pathname
 }
 
-// Info provide metadata about given pathname.
 func (a App) Info(_ context.Context, pathname string) (model.Item, error) {
 	if err := checkPathname(pathname); err != nil {
 		return model.Item{}, a.ConvertError(err)
@@ -95,7 +86,6 @@ func (a App) Info(_ context.Context, pathname string) (model.Item, error) {
 	return convertToItem(a.getRelativePath(fullpath), info), nil
 }
 
-// List items in the storage.
 func (a App) List(_ context.Context, pathname string) ([]model.Item, error) {
 	if err := checkPathname(pathname); err != nil {
 		return nil, a.ConvertError(err)
@@ -126,7 +116,6 @@ func (a App) List(_ context.Context, pathname string) ([]model.Item, error) {
 	return items, nil
 }
 
-// WriteTo with content from reader to pathname.
 func (a App) WriteTo(_ context.Context, pathname string, reader io.Reader) error {
 	if err := checkPathname(pathname); err != nil {
 		return a.ConvertError(err)
@@ -148,12 +137,10 @@ func (a App) WriteTo(_ context.Context, pathname string, reader io.Reader) error
 	return model.HandleClose(writer, err)
 }
 
-// WriteSizedTo with content from reader to pathname with known size.
 func (a App) WriteSizedTo(ctx context.Context, pathname string, _ int64, reader io.Reader) error {
 	return a.WriteTo(ctx, pathname, reader)
 }
 
-// ReadFrom reads content from given pathname.
 func (a App) ReadFrom(_ context.Context, pathname string) (io.ReadSeekCloser, error) {
 	if err := checkPathname(pathname); err != nil {
 		return nil, a.ConvertError(err)
@@ -163,7 +150,6 @@ func (a App) ReadFrom(_ context.Context, pathname string) (io.ReadSeekCloser, er
 	return output, a.ConvertError(err)
 }
 
-// UpdateDate update date from given value.
 func (a App) UpdateDate(_ context.Context, pathname string, date time.Time) error {
 	if err := checkPathname(pathname); err != nil {
 		return a.ConvertError(err)
@@ -172,7 +158,6 @@ func (a App) UpdateDate(_ context.Context, pathname string, date time.Time) erro
 	return a.ConvertError(os.Chtimes(a.Path(pathname), date, date))
 }
 
-// Walk browses item recursively.
 func (a App) Walk(_ context.Context, pathname string, walkFn func(model.Item) error) error {
 	pathname = a.Path(pathname)
 
@@ -193,7 +178,6 @@ func (a App) Walk(_ context.Context, pathname string, walkFn func(model.Item) er
 	}))
 }
 
-// CreateDir container in storage.
 func (a App) CreateDir(_ context.Context, name string) error {
 	if err := checkPathname(name); err != nil {
 		return a.ConvertError(err)
@@ -202,7 +186,6 @@ func (a App) CreateDir(_ context.Context, name string) error {
 	return a.ConvertError(os.MkdirAll(a.Path(name), 0o700))
 }
 
-// Rename file or directory from storage.
 func (a App) Rename(ctx context.Context, oldName, newName string) error {
 	if err := checkPathname(oldName); err != nil {
 		return a.ConvertError(err)
@@ -226,7 +209,6 @@ func (a App) Rename(ctx context.Context, oldName, newName string) error {
 	return a.ConvertError(os.Rename(a.Path(oldName), a.Path(newName)))
 }
 
-// Remove file or directory from storage.
 func (a App) Remove(_ context.Context, pathname string) error {
 	if err := checkPathname(pathname); err != nil {
 		return a.ConvertError(err)
@@ -235,7 +217,6 @@ func (a App) Remove(_ context.Context, pathname string) error {
 	return a.ConvertError(os.RemoveAll(a.Path(pathname)))
 }
 
-// ConvertError with the appropriate type.
 func (a App) ConvertError(err error) error {
 	if err == nil {
 		return nil
