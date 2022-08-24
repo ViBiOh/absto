@@ -14,6 +14,10 @@ var BufferPool = sync.Pool{
 	},
 }
 
+type WriteOpts struct {
+	Size int64
+}
+
 type Storage interface {
 	Enabled() bool
 	Name() string
@@ -21,8 +25,7 @@ type Storage interface {
 	Path(pathname string) string
 	Info(ctx context.Context, pathname string) (Item, error)
 	List(ctx context.Context, pathname string) ([]Item, error)
-	WriteTo(ctx context.Context, pathname string, reader io.Reader) error
-	WriteSizedTo(ctx context.Context, pathname string, size int64, reader io.Reader) error
+	WriteTo(ctx context.Context, pathname string, reader io.Reader, opts WriteOpts) error
 	ReadFrom(ctx context.Context, pathname string) (io.ReadSeekCloser, error)
 	Walk(ctx context.Context, pathname string, walkFn func(Item) error) error
 	CreateDir(ctx context.Context, pathname string) error

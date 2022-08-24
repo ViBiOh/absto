@@ -116,7 +116,7 @@ func (a App) List(_ context.Context, pathname string) ([]model.Item, error) {
 	return items, nil
 }
 
-func (a App) WriteTo(_ context.Context, pathname string, reader io.Reader) error {
+func (a App) WriteTo(_ context.Context, pathname string, reader io.Reader, _ model.WriteOpts) error {
 	if err := checkPathname(pathname); err != nil {
 		return a.ConvertError(err)
 	}
@@ -135,10 +135,6 @@ func (a App) WriteTo(_ context.Context, pathname string, reader io.Reader) error
 	}
 
 	return model.HandleClose(writer, err)
-}
-
-func (a App) WriteSizedTo(ctx context.Context, pathname string, _ int64, reader io.Reader) error {
-	return a.WriteTo(ctx, pathname, reader)
 }
 
 func (a App) ReadFrom(_ context.Context, pathname string) (io.ReadSeekCloser, error) {

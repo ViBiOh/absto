@@ -58,18 +58,11 @@ func (a App) List(ctx context.Context, pathname string) ([]model.Item, error) {
 	return a.storage.List(ctx, pathname)
 }
 
-func (a App) WriteTo(ctx context.Context, pathname string, reader io.Reader) error {
+func (a App) WriteTo(ctx context.Context, pathname string, reader io.Reader, opts model.WriteOpts) error {
 	ctx, span := a.tracer.Start(ctx, "writeTo", trace.WithAttributes(attribute.String("item", pathname)))
 	defer span.End()
 
-	return a.storage.WriteTo(ctx, pathname, reader)
-}
-
-func (a App) WriteSizedTo(ctx context.Context, pathname string, size int64, reader io.Reader) error {
-	ctx, span := a.tracer.Start(ctx, "writeTo", trace.WithAttributes(attribute.String("item", pathname)), trace.WithAttributes(attribute.Int64("size", size)))
-	defer span.End()
-
-	return a.storage.WriteSizedTo(ctx, pathname, size, reader)
+	return a.storage.WriteTo(ctx, pathname, reader, opts)
 }
 
 func (a App) ReadFrom(ctx context.Context, pathname string) (io.ReadSeekCloser, error) {

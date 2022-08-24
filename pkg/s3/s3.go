@@ -106,18 +106,14 @@ func (a App) List(ctx context.Context, pathname string) ([]model.Item, error) {
 	return items, nil
 }
 
-func (a App) WriteTo(ctx context.Context, pathname string, reader io.Reader) error {
-	if _, err := a.client.PutObject(ctx, a.bucket, a.Path(pathname), reader, -1, minio.PutObjectOptions{
-		PartSize: a.partSize,
-	}); err != nil {
-		return fmt.Errorf("put object: %w", err)
+func (a App) WriteTo(ctx context.Context, pathname string, reader io.Reader, opts model.WriteOpts) error {
+	if opts.Size == 0 {
+		opts.Size = -1
 	}
 
-	return nil
-}
-
-func (a App) WriteSizedTo(ctx context.Context, pathname string, size int64, reader io.Reader) error {
-	if _, err := a.client.PutObject(ctx, a.bucket, a.Path(pathname), reader, size, minio.PutObjectOptions{}); err != nil {
+	if _, err := a.client.PutObject(ctx, a.bucket, a.Path(pathname), reader, opts.Size, minio.PutObjectOptions{
+		PartSize: a.partSize,
+	}); err != nil {
 		return fmt.Errorf("put object: %w", err)
 	}
 
