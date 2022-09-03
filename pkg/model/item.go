@@ -18,12 +18,16 @@ type Item struct {
 	Size      int64     `json:"size"`
 }
 
-func (s Item) Dir() string {
-	if s.IsDir {
-		return s.Pathname
+func (i Item) IsZero() bool {
+	return len(i.Pathname) == 0
+}
+
+func (i Item) Dir() string {
+	if i.IsDir {
+		return i.Pathname
 	}
 
-	return Dirname(filepath.Dir(s.Pathname))
+	return Dirname(filepath.Dir(i.Pathname))
 }
 
 func ID(pathname string) string {
