@@ -7,7 +7,7 @@ Abstraction of file storage for golang (currently for filesystem and S3).
 ```bash
 Usage of absto:
   -fileSystemDirectory /data
-        [filesystem] Path to directory. Default is dynamic. /data on a server and Current Working Directory in a terminal. {ABSTO_FILE_SYSTEM_DIRECTORY} (default "/Users/vboutour/code/absto")
+        [filesystem] Path to directory. Default is dynamic. /data on a server and Current Working Directory in a terminal. {ABSTO_FILE_SYSTEM_DIRECTORY} (default "/Users/macbook/code/absto")
   -objectAccessKey string
         [s3] Storage Object Access Key {ABSTO_OBJECT_ACCESS_KEY}
   -objectBucket string
