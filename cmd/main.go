@@ -35,7 +35,7 @@ func main() {
 
 	fmt.Println(storage.CreateDir(context.Background(), "/test"))
 	fmt.Println(storage.WriteTo(context.Background(), "/test/example.txt", strings.NewReader("Streamed content"), model.WriteOpts{}))
-	fmt.Println(storage.WriteTo(context.Background(), "/test/second.txt", strings.NewReader("Fixed size content"), model.WriteOpts{Size: 20}))
+	fmt.Println(storage.WriteTo(context.Background(), "/test/second.txt", strings.NewReader("Fixed size content"), model.WriteOpts{Size: 18}))
 	fmt.Println(storage.Rename(context.Background(), "/test/", "/renamed/"))
 	fmt.Println(storage.Rename(context.Background(), "/renamed/example.txt", "/new/test.txt"))
 }
