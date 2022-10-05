@@ -34,6 +34,15 @@ jobs:
         run: |
           make
           git --no-pager diff -- ':(exclude)go.sum' && git diff --quiet -- ':(exclude)go.sum'
+          make run
+
+      - name: Integration test
+        run: make run
+        env:
+          ABSTO_OBJECT_ACCESS_KEY: ${{ secrets.ABSTO_OBJECT_ACCESS_KEY }}
+          ABSTO_OBJECT_BUCKET: ${{ secrets.ABSTO_OBJECT_BUCKET }}
+          ABSTO_OBJECT_ENDPOINT: ${{ secrets.ABSTO_OBJECT_ENDPOINT }}
+          ABSTO_OBJECT_SECRET_ACCESS: ${{ secrets.ABSTO_OBJECT_SECRET_ACCESS }}
       - name: Codecov
         uses: codecov/codecov-action@v3
 
