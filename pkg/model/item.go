@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -16,6 +17,17 @@ type Item struct {
 	Extension string    `json:"extension"`
 	IsDir     bool      `json:"isDir"`
 	Size      int64     `json:"size"`
+}
+
+func (i Item) String() string {
+	var output strings.Builder
+
+	output.WriteString(i.Pathname)
+	output.WriteString(strconv.FormatBool(i.IsDir))
+	output.WriteString(strconv.FormatInt(i.Size, 10))
+	output.WriteString(strconv.FormatInt(i.Date.Unix(), 10))
+
+	return output.String()
 }
 
 func (i Item) IsZero() bool {
