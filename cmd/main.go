@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"flag"
-	"fmt"
 	"log"
 	"os"
 	"strings"
@@ -17,34 +16,46 @@ func main() {
 
 	config := absto.Flags(fs, "")
 
-	fmt.Println(fs.Parse(os.Args[1:]))
+	if err := fs.Parse(os.Args[1:]); err != nil {
+		log.Fatal(err)
+	}
 
 	storage, err := absto.New(config, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	fmt.Println(storage.CreateDir(context.Background(), "/test"))
-	fmt.Println(storage.WriteTo(context.Background(), "/test/example.txt", strings.NewReader("Streamed content"), model.WriteOpts{}))
-	fmt.Println(storage.WriteTo(context.Background(), "/test/second.txt", strings.NewReader("Fixed size content"), model.WriteOpts{Size: 18}))
+	var hasErr bool
 
-	fmt.Println(storage.Rename(context.Background(), "/test/", "/renamed/"))
+	log.Println(storage.CreateDir(context.Background(), "/test"))
+	log.Println(storage.WriteTo(context.Background(), "/test/example.txt", strings.NewReader("Streamed content"), model.WriteOpts{}))
+	log.Println(storage.WriteTo(context.Background(), "/test/second.txt", strings.NewReader("Fixed size content"), model.WriteOpts{Size: 18}))
+
+	log.Println(storage.Rename(context.Background(), "/test/", "/renamed/"))
 
 	items, err := storage.List(context.Background(), "/renamed/")
 	if err != nil {
-		log.Fatal(err)
+		hasErr = true
+
+		log.Println(err)
 	}
 
 	for _, item := range items {
-		fmt.Printf("%+v\n", item)
+		log.Printf("%+v\n", item)
 	}
 
 	if len(items) != 2 {
-		log.Fatal("too many files in bucket")
+		hasErr = true
+
+		log.Println("too many files in bucket")
 	}
 
-	fmt.Println(storage.Rename(context.Background(), "/renamed/example.txt", "/new/test.txt"))
+	log.Println(storage.Rename(context.Background(), "/renamed/example.txt", "/new/test.txt"))
 
-	fmt.Println(storage.Remove(context.Background(), "/renamed"))
-	fmt.Println(storage.Remove(context.Background(), "/new"))
+	log.Println(storage.Remove(context.Background(), "/renamed"))
+	log.Println(storage.Remove(context.Background(), "/new"))
+
+	if hasErr {
+		os.Exit(1)
+	}
 }
