@@ -1,12 +1,12 @@
 package model
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/zeebo/xxh3"
 )
 
 type Item struct {
@@ -54,7 +54,5 @@ func Dirname(name string) string {
 }
 
 func sha(name string) string {
-	hasher := sha256.New()
-	_, _ = hasher.Write([]byte(name))
-	return hex.EncodeToString(hasher.Sum(nil))
+	return strconv.FormatUint(xxh3.HashString(name), 16)
 }
