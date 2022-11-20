@@ -1,18 +1,10 @@
 package model
 
 import (
-	"bytes"
 	"context"
 	"io"
-	"sync"
 	"time"
 )
-
-var BufferPool = sync.Pool{
-	New: func() any {
-		return bytes.NewBuffer(make([]byte, 4*1024))
-	},
-}
 
 type WriteOpts struct {
 	Size int64

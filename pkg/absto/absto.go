@@ -22,6 +22,8 @@ type Config struct {
 	accessKey    *string
 	secretAccess *string
 	bucket       *string
+	region       *string
+	storageClass *string
 	useSSL       *bool
 	partSize     *uint64
 }
@@ -42,6 +44,8 @@ func Flags(fs *flag.FlagSet, prefix string, overrides ...flags.Override) Config 
 		accessKey:    flags.String(fs, prefix, "s3", "ObjectAccessKey", "Storage Object Access Key", "", overrides),
 		secretAccess: flags.String(fs, prefix, "s3", "ObjectSecretAccess", "Storage Object Secret Access", "", overrides),
 		bucket:       flags.String(fs, prefix, "s3", "ObjectBucket", "Storage Object Bucket", "", overrides),
+		region:       flags.String(fs, prefix, "s3", "ObjectRegion", "Storage Object Region", "", overrides),
+		storageClass: flags.String(fs, prefix, "s3", "ObjectClass", "Storage Object Class", "", overrides),
 		useSSL:       flags.Bool(fs, prefix, "s3", "ObjectSSL", "Use SSL", true, overrides),
 		partSize:     flags.Uint64(fs, prefix, "s3", "PartSize", "PartSize configuration", 5<<20, overrides),
 	}
@@ -51,7 +55,16 @@ func Flags(fs *flag.FlagSet, prefix string, overrides ...flags.Override) Config 
 func New(config Config, tracer trace.Tracer) (storage model.Storage, err error) {
 	endpoint := strings.TrimSpace(*config.endpoint)
 	if len(endpoint) != 0 {
-		storage, err = s3.New(endpoint, strings.TrimSpace(*config.accessKey), *config.secretAccess, strings.TrimSpace(*config.bucket), *config.useSSL, *config.partSize)
+		var options []s3.ConfigOption
+
+		if region := strings.TrimSpace(*config.region); len(region) > 0 {
+			options = append(options, s3.WithRegion(region))
+		}
+		if storageClass := strings.TrimSpace(*config.storageClass); len(storageClass) > 0 {
+			options = append(options, s3.WithStorageClass(storageClass))
+		}
+
+		storage, err = s3.New(endpoint, strings.TrimSpace(*config.accessKey), *config.secretAccess, strings.TrimSpace(*config.bucket), *config.useSSL, *config.partSize, options...)
 	} else {
 		storage, err = filesystem.New(strings.TrimSpace(*config.directory))
 	}

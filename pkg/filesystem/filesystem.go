@@ -10,6 +10,7 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/ViBiOh/absto/pkg/model"
@@ -19,7 +20,15 @@ const Name = "fs"
 
 var _ model.Storage = App{}
 
-var ErrRelativePath = errors.New("pathname contains relatives paths")
+var (
+	ErrRelativePath = errors.New("pathname contains relatives paths")
+
+	bufferPool = sync.Pool{
+		New: func() any {
+			return bytes.NewBuffer(make([]byte, 32*1024))
+		},
+	}
+)
 
 type App struct {
 	ignoreFn      func(model.Item) bool
@@ -126,8 +135,8 @@ func (a App) WriteTo(_ context.Context, pathname string, reader io.Reader, _ mod
 		return a.ConvertError(err)
 	}
 
-	buffer := model.BufferPool.Get().(*bytes.Buffer)
-	defer model.BufferPool.Put(buffer)
+	buffer := bufferPool.Get().(*bytes.Buffer)
+	defer bufferPool.Put(buffer)
 
 	_, err = io.CopyBuffer(writer, reader, buffer.Bytes())
 	if err != nil {

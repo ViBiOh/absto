@@ -17,30 +17,61 @@ const Name = "s3"
 
 var _ model.Storage = App{}
 
-type App struct {
-	client   *minio.Client
-	ignoreFn func(model.Item) bool
-	bucket   string
-	partSize uint64
+type Config struct {
+	region       string
+	storageClass string
 }
 
-func New(endpoint, accessKey, secretAccess, bucket string, useSSL bool, partSize uint64) (App, error) {
+type ConfigOption func(Config) Config
+
+func WithRegion(region string) ConfigOption {
+	return func(instance Config) Config {
+		instance.region = region
+
+		return instance
+	}
+}
+
+func WithStorageClass(storageClass string) ConfigOption {
+	return func(instance Config) Config {
+		instance.storageClass = storageClass
+
+		return instance
+	}
+}
+
+type App struct {
+	client       *minio.Client
+	ignoreFn     func(model.Item) bool
+	bucket       string
+	storageClass string
+	partSize     uint64
+}
+
+func New(endpoint, accessKey, secretAccess, bucket string, useSSL bool, partSize uint64, options ...ConfigOption) (App, error) {
 	if len(endpoint) == 0 {
 		return App{}, nil
+	}
+
+	var config Config
+	for _, option := range options {
+		config = option(config)
 	}
 
 	client, err := minio.New(endpoint, &minio.Options{
 		Creds:  credentials.NewStaticV4(accessKey, secretAccess, ""),
 		Secure: useSSL,
+		Region: config.region,
 	})
 	if err != nil {
 		return App{}, fmt.Errorf("create minio client: %w", err)
 	}
 
 	return App{
-		client:   client,
-		bucket:   bucket,
-		partSize: partSize,
+		client:       client,
+		bucket:       bucket,
+		storageClass: config.storageClass,
+		partSize:     partSize,
 	}, nil
 }
 
@@ -112,7 +143,8 @@ func (a App) WriteTo(ctx context.Context, pathname string, reader io.Reader, opt
 	}
 
 	if _, err := a.client.PutObject(ctx, a.bucket, a.Path(pathname), reader, opts.Size, minio.PutObjectOptions{
-		PartSize: a.partSize,
+		PartSize:     a.partSize,
+		StorageClass: a.storageClass,
 	}); err != nil {
 		return fmt.Errorf("put object: %w", err)
 	}
@@ -154,7 +186,9 @@ func (a App) Walk(ctx context.Context, pathname string, walkFn func(model.Item) 
 }
 
 func (a App) CreateDir(ctx context.Context, name string) error {
-	_, err := a.client.PutObject(ctx, a.bucket, model.Dirname(a.Path(name)), strings.NewReader(""), 0, minio.PutObjectOptions{})
+	_, err := a.client.PutObject(ctx, a.bucket, model.Dirname(a.Path(name)), strings.NewReader(""), 0, minio.PutObjectOptions{
+		StorageClass: a.storageClass,
+	})
 	if err != nil {
 		return a.ConvertError(fmt.Errorf("create directory: %w", err))
 	}
