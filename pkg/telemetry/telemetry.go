@@ -37,7 +37,10 @@ func (a App) Name() string {
 }
 
 func (a App) WithIgnoreFn(ignoreFn func(model.Item) bool) model.Storage {
-	return a.storage.WithIgnoreFn(ignoreFn)
+	return App{
+		storage: a.storage.WithIgnoreFn(ignoreFn),
+		tracer:  a.tracer,
+	}
 }
 
 func (a App) Path(pathname string) string {
