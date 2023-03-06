@@ -106,7 +106,7 @@ func (a App) Info(ctx context.Context, pathname string) (model.Item, error) {
 
 	info, err := a.client.StatObject(ctx, a.bucket, realPathname, minio.GetObjectOptions{})
 	if err != nil {
-		return model.Item{}, a.ConvertError(fmt.Errorf("stat object: %w", err))
+		return model.Item{}, a.ConvertError(fmt.Errorf("stat object `%s`: %w", pathname, err))
 	}
 
 	return convertToItem(info), nil
@@ -155,7 +155,7 @@ func (a App) WriteTo(ctx context.Context, pathname string, reader io.Reader, opt
 func (a App) ReadFrom(ctx context.Context, pathname string) (io.ReadSeekCloser, error) {
 	object, err := a.client.GetObject(ctx, a.bucket, a.Path(pathname), minio.GetObjectOptions{})
 	if err != nil {
-		return nil, a.ConvertError(fmt.Errorf("get object: %w", err))
+		return nil, a.ConvertError(fmt.Errorf("get object `%s`: %w", pathname, err))
 	}
 
 	return object, nil
@@ -219,7 +219,7 @@ func (a App) Rename(ctx context.Context, oldName, newName string) error {
 		}
 
 		if err = a.client.RemoveObject(ctx, a.bucket, pathname, minio.RemoveObjectOptions{}); err != nil {
-			return a.ConvertError(fmt.Errorf("delete object: %w", err))
+			return a.ConvertError(fmt.Errorf("delete object `%s`: %w", pathname, err))
 		}
 
 		return nil
@@ -229,7 +229,7 @@ func (a App) Rename(ctx context.Context, oldName, newName string) error {
 func (a App) Remove(ctx context.Context, pathname string) error {
 	if err := a.Walk(ctx, pathname, func(item model.Item) error {
 		if err := a.client.RemoveObject(ctx, a.bucket, a.Path(item.Pathname), minio.RemoveObjectOptions{}); err != nil {
-			return a.ConvertError(fmt.Errorf("delete object `%s`: %w", a.Path(item.Pathname), err))
+			return a.ConvertError(fmt.Errorf("delete object `%s`: %w", item.Pathname, err))
 		}
 
 		return nil

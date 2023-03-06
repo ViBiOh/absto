@@ -7,6 +7,7 @@ import (
 
 	"github.com/ViBiOh/absto/pkg/model"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -51,27 +52,45 @@ func (a App) Info(ctx context.Context, pathname string) (model.Item, error) {
 	ctx, span := a.tracer.Start(ctx, "info", trace.WithAttributes(attribute.String("item", pathname)))
 	defer span.End()
 
-	return a.storage.Info(ctx, pathname)
+	output, err := a.storage.Info(ctx, pathname)
+	if err != nil {
+		span.SetStatus(codes.Error, err.Error())
+	}
+
+	return output, err
 }
 
 func (a App) List(ctx context.Context, pathname string) ([]model.Item, error) {
 	ctx, span := a.tracer.Start(ctx, "list", trace.WithAttributes(attribute.String("item", pathname)))
 	defer span.End()
 
-	return a.storage.List(ctx, pathname)
+	output, err := a.storage.List(ctx, pathname)
+	if err != nil {
+		span.SetStatus(codes.Error, err.Error())
+	}
+
+	return output, err
 }
 
 func (a App) WriteTo(ctx context.Context, pathname string, reader io.Reader, opts model.WriteOpts) error {
 	ctx, span := a.tracer.Start(ctx, "writeTo", trace.WithAttributes(attribute.String("item", pathname)))
 	defer span.End()
 
-	return a.storage.WriteTo(ctx, pathname, reader, opts)
+	err := a.storage.WriteTo(ctx, pathname, reader, opts)
+	if err != nil {
+		span.SetStatus(codes.Error, err.Error())
+	}
+
+	return err
 }
 
 func (a App) ReadFrom(ctx context.Context, pathname string) (io.ReadSeekCloser, error) {
 	ctx, span := a.tracer.Start(ctx, "readFrom", trace.WithAttributes(attribute.String("item", pathname)))
 
 	reader, err := a.storage.ReadFrom(ctx, pathname)
+	if err != nil {
+		span.SetStatus(codes.Error, err.Error())
+	}
 
 	return telemetryCloser{
 		ReadSeekCloser: reader,
@@ -83,35 +102,60 @@ func (a App) UpdateDate(ctx context.Context, pathname string, date time.Time) er
 	ctx, span := a.tracer.Start(ctx, "updateDate", trace.WithAttributes(attribute.String("item", pathname)))
 	defer span.End()
 
-	return a.storage.UpdateDate(ctx, pathname, date)
+	err := a.storage.UpdateDate(ctx, pathname, date)
+	if err != nil {
+		span.SetStatus(codes.Error, err.Error())
+	}
+
+	return err
 }
 
 func (a App) Walk(ctx context.Context, pathname string, walkFn func(model.Item) error) error {
 	ctx, span := a.tracer.Start(ctx, "walk", trace.WithAttributes(attribute.String("item", pathname)))
 	defer span.End()
 
-	return a.storage.Walk(ctx, pathname, walkFn)
+	err := a.storage.Walk(ctx, pathname, walkFn)
+	if err != nil {
+		span.SetStatus(codes.Error, err.Error())
+	}
+
+	return err
 }
 
 func (a App) CreateDir(ctx context.Context, pathname string) error {
 	ctx, span := a.tracer.Start(ctx, "createDir", trace.WithAttributes(attribute.String("item", pathname)))
 	defer span.End()
 
-	return a.storage.CreateDir(ctx, pathname)
+	err := a.storage.CreateDir(ctx, pathname)
+	if err != nil {
+		span.SetStatus(codes.Error, err.Error())
+	}
+
+	return err
 }
 
 func (a App) Rename(ctx context.Context, oldName, newName string) error {
 	ctx, span := a.tracer.Start(ctx, "rename", trace.WithAttributes(attribute.String("item", oldName)), trace.WithAttributes(attribute.String("new", newName)))
 	defer span.End()
 
-	return a.storage.Rename(ctx, oldName, newName)
+	err := a.storage.Rename(ctx, oldName, newName)
+	if err != nil {
+		span.SetStatus(codes.Error, err.Error())
+	}
+
+	return err
 }
 
 func (a App) Remove(ctx context.Context, pathname string) error {
 	ctx, span := a.tracer.Start(ctx, "remove", trace.WithAttributes(attribute.String("item", pathname)))
 	defer span.End()
 
-	return a.storage.Remove(ctx, pathname)
+	err := a.storage.Remove(ctx, pathname)
+	if err != nil {
+		span.SetStatus(codes.Error, err.Error())
+	}
+
+	return err
 }
 
 type telemetryCloser struct {
