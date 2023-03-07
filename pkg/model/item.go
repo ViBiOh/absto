@@ -9,18 +9,6 @@ import (
 	"github.com/zeebo/xxh3"
 )
 
-type Items []Item
-
-func (i Items) FindByPathname(name string) (Item, bool) {
-	for _, item := range i {
-		if item.Pathname == name {
-			return item, true
-		}
-	}
-
-	return Item{}, false
-}
-
 type Item struct {
 	Date      time.Time `json:"date"`
 	ID        string    `json:"id"`
