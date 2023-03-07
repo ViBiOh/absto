@@ -186,11 +186,22 @@ func (a App) Walk(ctx context.Context, pathname string, walkFn func(model.Item) 
 }
 
 func (a App) CreateDir(ctx context.Context, name string) error {
-	_, err := a.client.PutObject(ctx, a.bucket, model.Dirname(a.Path(name)), strings.NewReader(""), 0, minio.PutObjectOptions{
-		StorageClass: a.storageClass,
-	})
-	if err != nil {
-		return a.ConvertError(fmt.Errorf("create directory: %w", err))
+	parts := strings.Split(model.Dirname(a.Path(name)), "/")
+
+	for index := range parts {
+		dirname := strings.Join(parts[:index], "/")
+
+		if _, err := a.Info(ctx, dirname); err != nil {
+			if !model.IsNotExist(err) {
+				return fmt.Errorf("info `%s`: %w", dirname, err)
+			}
+
+			if _, err = a.client.PutObject(ctx, a.bucket, model.Dirname(dirname), strings.NewReader(""), 0, minio.PutObjectOptions{
+				StorageClass: a.storageClass,
+			}); err != nil {
+				return a.ConvertError(fmt.Errorf("create directory: %w", err))
+			}
+		}
 	}
 
 	return nil
