@@ -13,14 +13,6 @@ const (
 	writeFlags = os.O_RDWR | os.O_CREATE | os.O_TRUNC
 )
 
-func checkPathname(pathname string) error {
-	if strings.Contains(pathname, "..") {
-		return ErrRelativePath
-	}
-
-	return nil
-}
-
 func (a App) getRelativePath(pathname string) string {
 	return strings.TrimPrefix(pathname, a.rootDirectory)
 }

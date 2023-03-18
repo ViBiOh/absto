@@ -4,9 +4,13 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"regexp"
 )
 
-var errNotExists = errors.New("not exists")
+var (
+	errNotExists    = errors.New("not exists")
+	ErrRelativePath = errors.New("pathname contains relatives paths")
+)
 
 func ErrNotExist(err error) error {
 	return fmt.Errorf("%s: %w", err, errNotExists)
@@ -29,4 +33,14 @@ func HandleClose(closer io.Closer, err error) error {
 	}
 
 	return err
+}
+
+var relativePathRegex = regexp.MustCompile(`(?m)(\/|^)..(\/|$)`)
+
+func CheckRelativePath(pathname string) error {
+	if relativePathRegex.MatchString(pathname) {
+		return ErrRelativePath
+	}
+
+	return nil
 }
