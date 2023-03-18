@@ -98,6 +98,7 @@ func (a App) Info(ctx context.Context, pathname string) (model.Item, error) {
 
 	if realPathname == "" {
 		return model.Item{
+			ID:       model.ID(pathname),
 			Name:     "/",
 			Pathname: "/",
 			IsDir:    true,
@@ -106,10 +107,28 @@ func (a App) Info(ctx context.Context, pathname string) (model.Item, error) {
 
 	info, err := a.client.StatObject(ctx, a.bucket, realPathname, minio.GetObjectOptions{})
 	if err != nil {
+		if strings.HasSuffix(realPathname, "/") && IsNotExist(err) && a.dirExists(ctx, realPathname) {
+			return convertToItem(minio.ObjectInfo{Key: realPathname}), nil
+		}
+
 		return model.Item{}, a.ConvertError(fmt.Errorf("stat object `%s`: %w", pathname, err))
 	}
 
 	return convertToItem(info), nil
+}
+
+func (a App) dirExists(ctx context.Context, realPathname string) bool {
+	objectsCh := a.client.ListObjects(ctx, a.bucket, minio.ListObjectsOptions{
+		Prefix:  realPathname,
+		MaxKeys: 1,
+	})
+
+	var found uint
+	for range objectsCh {
+		found++
+	}
+
+	return found > 0
 }
 
 func (a App) List(ctx context.Context, pathname string) ([]model.Item, error) {
@@ -251,12 +270,16 @@ func (a App) Remove(ctx context.Context, pathname string) error {
 	return a.client.RemoveObject(ctx, a.bucket, a.Path(pathname), minio.RemoveObjectOptions{})
 }
 
+func IsNotExist(err error) bool {
+	return strings.Contains(err.Error(), "The specified key does not exist")
+}
+
 func (a App) ConvertError(err error) error {
 	if err == nil {
 		return err
 	}
 
-	if strings.Contains(err.Error(), "The specified key does not exist") {
+	if IsNotExist(err) {
 		return model.ErrNotExist(err)
 	}
 

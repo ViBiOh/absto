@@ -44,13 +44,18 @@ func getMode(name string) os.FileMode {
 func convertToItem(pathname string, info os.FileInfo) model.Item {
 	name := info.Name()
 
-	return model.Item{
-		ID:        model.ID(pathname),
-		Name:      name,
-		Pathname:  pathname,
-		Extension: strings.ToLower(path.Ext(name)),
-		IsDir:     info.IsDir(),
-		Date:      info.ModTime(),
-		Size:      info.Size(),
+	item := model.Item{
+		ID:       model.ID(pathname),
+		Name:     name,
+		Pathname: pathname,
+		IsDir:    info.IsDir(),
+		Date:     info.ModTime(),
 	}
+
+	if !item.IsDir {
+		item.Extension = strings.ToLower(path.Ext(name))
+		item.Size = info.Size()
+	}
+
+	return item
 }
