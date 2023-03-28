@@ -1,6 +1,7 @@
 package model
 
 import (
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -10,13 +11,14 @@ import (
 )
 
 type Item struct {
-	Date      time.Time `json:"date"`
-	ID        string    `json:"id"`
-	Name      string    `json:"name"`
-	Pathname  string    `json:"pathname"`
-	Extension string    `json:"extension"`
-	IsDir     bool      `json:"isDir"`
-	Size      int64     `json:"size"`
+	Date      time.Time   `json:"date"`
+	ID        string      `json:"id"`
+	Name      string      `json:"name"`
+	Pathname  string      `json:"pathname"`
+	Extension string      `json:"extension"`
+	Size      int64       `json:"size"`
+	FileMode  os.FileMode `json:"fileMode"`
+	IsDir     bool        `json:"isDir"`
 }
 
 func (i Item) String() string {
@@ -40,6 +42,10 @@ func (i Item) Dir() string {
 	}
 
 	return Dirname(filepath.Dir(i.Pathname))
+}
+
+func (i Item) AsFileInfo() os.FileInfo {
+	return ItemInfo{i}
 }
 
 func ID(pathname string) string {

@@ -129,6 +129,7 @@ func TestConvertToItem(t *testing.T) {
 				IsDir:     false,
 				Date:      readmeInfo.ModTime(),
 				Size:      readmeInfo.Size(),
+				FileMode:  readmeInfo.Mode(),
 			},
 		},
 	}
