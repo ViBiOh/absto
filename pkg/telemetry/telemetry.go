@@ -84,7 +84,7 @@ func (a App) WriteTo(ctx context.Context, pathname string, reader io.Reader, opt
 	return err
 }
 
-func (a App) ReadFrom(ctx context.Context, pathname string) (io.ReadSeekCloser, error) {
+func (a App) ReadFrom(ctx context.Context, pathname string) (model.ReadAtSeekCloser, error) {
 	ctx, span := a.tracer.Start(ctx, "readFrom", trace.WithAttributes(attribute.String("item", pathname)))
 
 	reader, err := a.storage.ReadFrom(ctx, pathname)
@@ -93,8 +93,8 @@ func (a App) ReadFrom(ctx context.Context, pathname string) (io.ReadSeekCloser, 
 	}
 
 	return telemetryCloser{
-		ReadSeekCloser: reader,
-		end:            span.End,
+		ReadAtSeekCloser: reader,
+		end:              span.End,
 	}, err
 }
 
@@ -159,14 +159,14 @@ func (a App) Remove(ctx context.Context, pathname string) error {
 }
 
 type telemetryCloser struct {
-	io.ReadSeekCloser
+	model.ReadAtSeekCloser
 	end func(options ...trace.SpanEndOption)
 }
 
 func (tc telemetryCloser) Close() error {
 	tc.end()
 
-	return tc.ReadSeekCloser.Close()
+	return tc.ReadAtSeekCloser.Close()
 }
 
 func (a App) ConvertError(err error) error {

@@ -141,7 +141,7 @@ func (a App) WriteTo(_ context.Context, pathname string, reader io.Reader, _ mod
 	return model.HandleClose(writer, err)
 }
 
-func (a App) ReadFrom(_ context.Context, pathname string) (io.ReadSeekCloser, error) {
+func (a App) ReadFrom(_ context.Context, pathname string) (model.ReadAtSeekCloser, error) {
 	if err := model.CheckRelativePath(pathname); err != nil {
 		return nil, err
 	}

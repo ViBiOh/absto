@@ -171,7 +171,7 @@ func (a App) WriteTo(ctx context.Context, pathname string, reader io.Reader, opt
 	return nil
 }
 
-func (a App) ReadFrom(ctx context.Context, pathname string) (io.ReadSeekCloser, error) {
+func (a App) ReadFrom(ctx context.Context, pathname string) (model.ReadAtSeekCloser, error) {
 	object, err := a.client.GetObject(ctx, a.bucket, a.Path(pathname), minio.GetObjectOptions{})
 	if err != nil {
 		return nil, a.ConvertError(fmt.Errorf("get object `%s`: %w", pathname, err))
