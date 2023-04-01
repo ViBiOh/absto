@@ -1,6 +1,7 @@
 package model
 
 import (
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -44,7 +45,7 @@ func (i Item) Dir() string {
 	return Dirname(filepath.Dir(i.Pathname))
 }
 
-func (i Item) AsFileInfo() os.FileInfo {
+func (i Item) Info() fs.FileInfo {
 	return ItemInfo{i}
 }
 

@@ -2,6 +2,7 @@ package filesystem
 
 import (
 	"io"
+	"io/fs"
 	"os"
 	"path"
 	"strings"
@@ -9,20 +10,21 @@ import (
 	"github.com/ViBiOh/absto/pkg/model"
 )
 
-const (
-	writeFlags = os.O_RDWR | os.O_CREATE | os.O_TRUNC
-)
-
 func (a App) getRelativePath(pathname string) string {
 	return strings.TrimPrefix(pathname, a.rootDirectory)
 }
 
 func (a App) getFile(filename string, flags int) (*os.File, error) {
-	return os.OpenFile(a.Path(filename), flags, getMode(filename))
+	file, err := os.OpenFile(a.Path(filename), flags, getMode(filename))
+	return file, a.ConvertError(err)
+}
+
+func (a App) getReadableFile(filename string) (model.ReadAtSeekCloser, error) {
+	return a.getFile(filename, os.O_RDONLY)
 }
 
 func (a App) getWritableFile(filename string) (io.WriteCloser, error) {
-	return a.getFile(filename, writeFlags)
+	return a.getFile(filename, os.O_RDWR|os.O_CREATE|os.O_TRUNC)
 }
 
 func getMode(name string) os.FileMode {
@@ -33,7 +35,7 @@ func getMode(name string) os.FileMode {
 	return 0o600
 }
 
-func convertToItem(pathname string, info os.FileInfo) model.Item {
+func convertToItem(pathname string, info fs.FileInfo) model.Item {
 	name := info.Name()
 
 	item := model.Item{

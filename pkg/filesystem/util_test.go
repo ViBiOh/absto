@@ -2,6 +2,7 @@ package filesystem
 
 import (
 	"errors"
+	"io/fs"
 	"os"
 	"strings"
 	"testing"
@@ -104,7 +105,7 @@ func TestGetMode(t *testing.T) {
 func TestConvertToItem(t *testing.T) {
 	type args struct {
 		pathname string
-		info     os.FileInfo
+		info     fs.FileInfo
 	}
 
 	readmeInfo, err := os.Stat("../../README.md")

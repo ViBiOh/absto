@@ -2,7 +2,7 @@ package model
 
 import "testing"
 
-func TestCheckPathname(t *testing.T) {
+func TestValidPath(t *testing.T) {
 	type args struct {
 		pathname string
 	}
@@ -45,8 +45,8 @@ func TestCheckPathname(t *testing.T) {
 
 	for intention, tc := range cases {
 		t.Run(intention, func(t *testing.T) {
-			if got := CheckRelativePath(tc.args.pathname); got != tc.want {
-				t.Errorf("checkPathname() = %t, want %t", got, tc.want)
+			if got := ValidPath(tc.args.pathname); got != tc.want {
+				t.Errorf("ValidPath() = `%s`, want `%s`", got, tc.want)
 			}
 		})
 	}

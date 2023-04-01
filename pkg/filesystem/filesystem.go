@@ -3,8 +3,10 @@ package filesystem
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path"
 	"path/filepath"
@@ -76,7 +78,7 @@ func (a App) Path(pathname string) string {
 }
 
 func (a App) Info(_ context.Context, pathname string) (model.Item, error) {
-	if err := model.CheckRelativePath(pathname); err != nil {
+	if err := model.ValidPath(pathname); err != nil {
 		return model.Item{}, err
 	}
 
@@ -91,7 +93,7 @@ func (a App) Info(_ context.Context, pathname string) (model.Item, error) {
 }
 
 func (a App) List(_ context.Context, pathname string) ([]model.Item, error) {
-	if err := model.CheckRelativePath(pathname); err != nil {
+	if err := model.ValidPath(pathname); err != nil {
 		return nil, err
 	}
 
@@ -121,13 +123,13 @@ func (a App) List(_ context.Context, pathname string) ([]model.Item, error) {
 }
 
 func (a App) WriteTo(_ context.Context, pathname string, reader io.Reader, _ model.WriteOpts) error {
-	if err := model.CheckRelativePath(pathname); err != nil {
+	if err := model.ValidPath(pathname); err != nil {
 		return err
 	}
 
 	writer, err := a.getWritableFile(pathname)
 	if err != nil {
-		return a.ConvertError(err)
+		return err
 	}
 
 	buffer := bufferPool.Get().(*bytes.Buffer)
@@ -138,20 +140,19 @@ func (a App) WriteTo(_ context.Context, pathname string, reader io.Reader, _ mod
 		err = a.ConvertError(err)
 	}
 
-	return model.HandleClose(writer, err)
+	return errors.Join(err, writer.Close())
 }
 
 func (a App) ReadFrom(_ context.Context, pathname string) (model.ReadAtSeekCloser, error) {
-	if err := model.CheckRelativePath(pathname); err != nil {
+	if err := model.ValidPath(pathname); err != nil {
 		return nil, err
 	}
 
-	output, err := a.getFile(pathname, os.O_RDONLY)
-	return output, a.ConvertError(err)
+	return a.getReadableFile(pathname)
 }
 
 func (a App) UpdateDate(_ context.Context, pathname string, date time.Time) error {
-	if err := model.CheckRelativePath(pathname); err != nil {
+	if err := model.ValidPath(pathname); err != nil {
 		return err
 	}
 
@@ -161,7 +162,7 @@ func (a App) UpdateDate(_ context.Context, pathname string, date time.Time) erro
 func (a App) Walk(_ context.Context, pathname string, walkFn func(model.Item) error) error {
 	pathname = a.Path(pathname)
 
-	return a.ConvertError(filepath.Walk(pathname, func(path string, info os.FileInfo, err error) error {
+	return a.ConvertError(filepath.Walk(pathname, func(path string, info fs.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
@@ -179,7 +180,7 @@ func (a App) Walk(_ context.Context, pathname string, walkFn func(model.Item) er
 }
 
 func (a App) CreateDir(_ context.Context, name string) error {
-	if err := model.CheckRelativePath(name); err != nil {
+	if err := model.ValidPath(name); err != nil {
 		return err
 	}
 
@@ -187,11 +188,11 @@ func (a App) CreateDir(_ context.Context, name string) error {
 }
 
 func (a App) Rename(ctx context.Context, oldName, newName string) error {
-	if err := model.CheckRelativePath(oldName); err != nil {
+	if err := model.ValidPath(oldName); err != nil {
 		return err
 	}
 
-	if err := model.CheckRelativePath(newName); err != nil {
+	if err := model.ValidPath(newName); err != nil {
 		return err
 	}
 
@@ -210,7 +211,7 @@ func (a App) Rename(ctx context.Context, oldName, newName string) error {
 }
 
 func (a App) Remove(_ context.Context, pathname string) error {
-	if err := model.CheckRelativePath(pathname); err != nil {
+	if err := model.ValidPath(pathname); err != nil {
 		return err
 	}
 

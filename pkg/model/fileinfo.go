@@ -1,11 +1,12 @@
 package model
 
 import (
+	"io/fs"
 	"os"
 	"time"
 )
 
-var _ os.FileInfo = ItemInfo{}
+var _ fs.FileInfo = ItemInfo{}
 
 type ItemInfo struct {
 	Item
