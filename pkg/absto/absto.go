@@ -38,16 +38,16 @@ func Flags(fs *flag.FlagSet, prefix string, overrides ...flags.Override) Config 
 	}
 
 	return Config{
-		directory: flags.String(fs, prefix, "filesystem", "FileSystemDirectory", "Path to directory. Default is dynamic. `/data` on a server and Current Working Directory in a terminal.", defaultFS, overrides),
+		directory: flags.New("FileSystemDirectory", "Path to directory. Default is dynamic. `/data` on a server and Current Working Directory in a terminal.").Prefix(prefix).DocPrefix("filesystem").String(fs, defaultFS, overrides),
 
-		endpoint:     flags.String(fs, prefix, "s3", "ObjectEndpoint", "Storage Object endpoint", "", overrides),
-		accessKey:    flags.String(fs, prefix, "s3", "ObjectAccessKey", "Storage Object Access Key", "", overrides),
-		secretAccess: flags.String(fs, prefix, "s3", "ObjectSecretAccess", "Storage Object Secret Access", "", overrides),
-		bucket:       flags.String(fs, prefix, "s3", "ObjectBucket", "Storage Object Bucket", "", overrides),
-		region:       flags.String(fs, prefix, "s3", "ObjectRegion", "Storage Object Region", "", overrides),
-		storageClass: flags.String(fs, prefix, "s3", "ObjectClass", "Storage Object Class", "", overrides),
-		useSSL:       flags.Bool(fs, prefix, "s3", "ObjectSSL", "Use SSL", true, overrides),
-		partSize:     flags.Uint64(fs, prefix, "s3", "PartSize", "PartSize configuration", 5<<20, overrides),
+		endpoint:     flags.New("ObjectEndpoint", "Storage Object endpoint").Prefix(prefix).DocPrefix("s3").String(fs, "", overrides),
+		accessKey:    flags.New("ObjectAccessKey", "Storage Object Access Key").Prefix(prefix).DocPrefix("s3").String(fs, "", overrides),
+		secretAccess: flags.New("ObjectSecretAccess", "Storage Object Secret Access").Prefix(prefix).DocPrefix("s3").String(fs, "", overrides),
+		bucket:       flags.New("ObjectBucket", "Storage Object Bucket").Prefix(prefix).DocPrefix("s3").String(fs, "", overrides),
+		region:       flags.New("ObjectRegion", "Storage Object Region").Prefix(prefix).DocPrefix("s3").String(fs, "", overrides),
+		storageClass: flags.New("ObjectClass", "Storage Object Class").Prefix(prefix).DocPrefix("s3").String(fs, "", overrides),
+		useSSL:       flags.New("ObjectSSL", "Use SSL").Prefix(prefix).DocPrefix("s3").Bool(fs, true, overrides),
+		partSize:     flags.New("PartSize", "PartSize configuration").Prefix(prefix).DocPrefix("s3").Uint64(fs, 5<<20, overrides),
 	}
 }
 

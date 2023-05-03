@@ -3,7 +3,7 @@ module github.com/ViBiOh/absto
 go 1.20
 
 require (
-	github.com/ViBiOh/flags v1.3.0
+	github.com/ViBiOh/flags v1.3.1
 	github.com/minio/minio-go/v7 v7.0.52
 	github.com/zeebo/xxh3 v1.0.2
 	go.opentelemetry.io/otel v1.15.1
