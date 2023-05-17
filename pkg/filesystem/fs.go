@@ -23,6 +23,7 @@ var (
 	_ io.ReaderAt    = &File{}
 	_ io.Seeker      = &File{}
 	_ io.Writer      = &File{}
+	_ fs.DirEntry    = FileInfo{}
 )
 
 type FileInfo struct {
@@ -151,7 +152,7 @@ func (f *File) Readdir(n int) ([]fs.FileInfo, error) {
 func (f *File) ReadDir(n int) ([]fs.DirEntry, error) {
 	var output []fs.DirEntry
 
-	err := f.app.walk(f.name, func(info fs.DirEntry) error {
+	err := f.app.walk(model.Dirname(f.name), func(info fs.DirEntry) error {
 		output = append(output, info)
 
 		return nil
@@ -182,6 +183,8 @@ func (f *File) ReadDir(n int) ([]fs.DirEntry, error) {
 }
 
 func (a App) walk(pathname string, walkFn func(fs.DirEntry) error) error {
+	dirname := model.Dirname(path.Dir(pathname))
+
 	return filepath.Walk(pathname, func(entryName string, info fs.FileInfo, err error) error {
 		if err != nil {
 			return err
@@ -191,7 +194,7 @@ func (a App) walk(pathname string, walkFn func(fs.DirEntry) error) error {
 			return nil
 		}
 
-		if pathname != model.Dirname(path.Dir(entryName)) {
+		if dirname != model.Dirname(path.Dir(entryName)) {
 			return filepath.SkipDir
 		}
 
