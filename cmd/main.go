@@ -3,8 +3,6 @@ package main
 import (
 	"context"
 	"flag"
-	"fmt"
-	fileSystem "io/fs"
 	"log"
 	"os"
 	"strings"
@@ -61,28 +59,5 @@ func main() {
 
 	if hasErr {
 		os.Exit(1)
-	}
-
-	if fsApp, ok := storage.(fileSystem.FS); ok {
-		err := fileSystem.WalkDir(fsApp, "pkg", func(path string, d fileSystem.DirEntry, err error) error {
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			fmt.Println("fs", path)
-			return nil
-		})
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		// fileSystem.WalkDir(os.DirFS("/Users/macbook/code/absto"), "pkg", func(path string, d fileSystem.DirEntry, err error) error {
-		// 	if err != nil {
-		// 		log.Fatal(err)
-		// 	}
-
-		// 	fmt.Println("native", path)
-		// 	return nil
-		// })
 	}
 }
