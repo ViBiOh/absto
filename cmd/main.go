@@ -9,10 +9,12 @@ import (
 
 	"github.com/ViBiOh/absto/pkg/absto"
 	"github.com/ViBiOh/absto/pkg/model"
+	"github.com/ViBiOh/flags"
 )
 
 func main() {
 	fs := flag.NewFlagSet("absto", flag.ExitOnError)
+	fs.Usage = flags.Usage(fs)
 
 	config := absto.Flags(fs, "")
 
