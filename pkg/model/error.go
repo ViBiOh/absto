@@ -8,8 +8,8 @@ import (
 
 var (
 	errNotExists      = errors.New("not exists")
-	ErrRelativePath   = errors.New("pathname contains relatives paths")
-	ErrInvalidPath    = errors.New("pathname is invalid")
+	ErrRelativePath   = errors.New("name contains relatives paths")
+	ErrInvalidPath    = errors.New("name is invalid")
 	relativePathRegex = regexp.MustCompile(`(?m)(\/|^)\.\.(\/|$)`)
 )
 
@@ -25,8 +25,8 @@ func IsNotExist(err error) bool {
 	return errors.Is(err, errNotExists)
 }
 
-func ValidPath(pathname string) error {
-	if relativePathRegex.MatchString(pathname) {
+func ValidPath(name string) error {
+	if relativePathRegex.MatchString(name) {
 		return ErrRelativePath
 	}
 

@@ -77,7 +77,7 @@ func (a App) Path(pathname string) string {
 	return a.rootDirectory + "/" + pathname
 }
 
-func (a App) Info(_ context.Context, pathname string) (model.Item, error) {
+func (a App) Stat(_ context.Context, pathname string) (model.Item, error) {
 	if err := model.ValidPath(pathname); err != nil {
 		return model.Item{}, err
 	}
@@ -179,12 +179,12 @@ func (a App) Walk(_ context.Context, pathname string, walkFn func(model.Item) er
 	}))
 }
 
-func (a App) CreateDir(_ context.Context, name string) error {
+func (a App) Mkdir(_ context.Context, name string, perm os.FileMode) error {
 	if err := model.ValidPath(name); err != nil {
 		return err
 	}
 
-	return a.ConvertError(os.MkdirAll(a.Path(name), 0o700))
+	return a.ConvertError(os.MkdirAll(a.Path(name), perm))
 }
 
 func (a App) Rename(ctx context.Context, oldName, newName string) error {
@@ -197,9 +197,9 @@ func (a App) Rename(ctx context.Context, oldName, newName string) error {
 	}
 
 	newDirPath := path.Dir(strings.TrimSuffix(newName, "/"))
-	if _, err := a.Info(ctx, newDirPath); err != nil {
+	if _, err := a.Stat(ctx, newDirPath); err != nil {
 		if model.IsNotExist(err) {
-			if err = a.CreateDir(ctx, newDirPath); err != nil {
+			if err = a.Mkdir(ctx, newDirPath, model.DirectoryPerm); err != nil {
 				return a.ConvertError(err)
 			}
 		} else {
@@ -210,12 +210,12 @@ func (a App) Rename(ctx context.Context, oldName, newName string) error {
 	return a.ConvertError(os.Rename(a.Path(oldName), a.Path(newName)))
 }
 
-func (a App) Remove(_ context.Context, pathname string) error {
-	if err := model.ValidPath(pathname); err != nil {
+func (a App) RemoveAll(_ context.Context, name string) error {
+	if err := model.ValidPath(name); err != nil {
 		return err
 	}
 
-	return a.ConvertError(os.RemoveAll(a.Path(pathname)))
+	return a.ConvertError(os.RemoveAll(a.Path(name)))
 }
 
 func (a App) ConvertError(err error) error {

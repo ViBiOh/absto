@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 	"path"
 	"strings"
 	"time"
@@ -93,7 +94,7 @@ func (a App) Path(pathname string) string {
 	return strings.TrimPrefix(pathname, "/")
 }
 
-func (a App) Info(ctx context.Context, pathname string) (model.Item, error) {
+func (a App) Stat(ctx context.Context, pathname string) (model.Item, error) {
 	realPathname := a.Path(pathname)
 
 	if realPathname == "" {
@@ -204,13 +205,13 @@ func (a App) Walk(ctx context.Context, pathname string, walkFn func(model.Item) 
 	return nil
 }
 
-func (a App) CreateDir(ctx context.Context, name string) error {
+func (a App) Mkdir(ctx context.Context, name string, _ os.FileMode) error {
 	parts := strings.Split(model.Dirname(a.Path(name)), "/")
 
 	for index := range parts {
 		dirname := strings.Join(parts[:index], "/")
 
-		if _, err := a.Info(ctx, dirname); err != nil {
+		if _, err := a.Stat(ctx, dirname); err != nil {
 			if !model.IsNotExist(err) {
 				return fmt.Errorf("info `%s`: %w", dirname, err)
 			}
@@ -256,8 +257,8 @@ func (a App) Rename(ctx context.Context, oldName, newName string) error {
 	})
 }
 
-func (a App) Remove(ctx context.Context, pathname string) error {
-	if err := a.Walk(ctx, pathname, func(item model.Item) error {
+func (a App) RemoveAll(ctx context.Context, name string) error {
+	if err := a.Walk(ctx, name, func(item model.Item) error {
 		if err := a.client.RemoveObject(ctx, a.bucket, a.Path(item.Pathname), minio.RemoveObjectOptions{}); err != nil {
 			return a.ConvertError(fmt.Errorf("delete object `%s`: %w", item.Pathname, err))
 		}
@@ -267,7 +268,7 @@ func (a App) Remove(ctx context.Context, pathname string) error {
 		return err
 	}
 
-	return a.client.RemoveObject(ctx, a.bucket, a.Path(pathname), minio.RemoveObjectOptions{})
+	return a.client.RemoveObject(ctx, a.bucket, a.Path(name), minio.RemoveObjectOptions{})
 }
 
 func IsNotExist(err error) bool {

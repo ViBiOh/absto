@@ -3,6 +3,7 @@ package telemetry
 import (
 	"context"
 	"io"
+	"os"
 	"time"
 
 	"github.com/ViBiOh/absto/pkg/model"
@@ -48,11 +49,11 @@ func (a App) Path(pathname string) string {
 	return a.storage.Path(pathname)
 }
 
-func (a App) Info(ctx context.Context, pathname string) (model.Item, error) {
-	ctx, span := a.tracer.Start(ctx, "info", trace.WithAttributes(attribute.String("item", pathname)))
+func (a App) Stat(ctx context.Context, name string) (model.Item, error) {
+	ctx, span := a.tracer.Start(ctx, "stat", trace.WithAttributes(attribute.String("name", name)))
 	defer span.End()
 
-	output, err := a.storage.Info(ctx, pathname)
+	output, err := a.storage.Stat(ctx, name)
 	if err != nil {
 		span.SetStatus(codes.Error, err.Error())
 	}
@@ -122,11 +123,11 @@ func (a App) Walk(ctx context.Context, pathname string, walkFn func(model.Item) 
 	return err
 }
 
-func (a App) CreateDir(ctx context.Context, pathname string) error {
-	ctx, span := a.tracer.Start(ctx, "createDir", trace.WithAttributes(attribute.String("item", pathname)))
+func (a App) Mkdir(ctx context.Context, name string, perm os.FileMode) error {
+	ctx, span := a.tracer.Start(ctx, "createDir", trace.WithAttributes(attribute.String("name", name)))
 	defer span.End()
 
-	err := a.storage.CreateDir(ctx, pathname)
+	err := a.storage.Mkdir(ctx, name, perm)
 	if err != nil {
 		span.SetStatus(codes.Error, err.Error())
 	}
@@ -135,7 +136,7 @@ func (a App) CreateDir(ctx context.Context, pathname string) error {
 }
 
 func (a App) Rename(ctx context.Context, oldName, newName string) error {
-	ctx, span := a.tracer.Start(ctx, "rename", trace.WithAttributes(attribute.String("item", oldName)), trace.WithAttributes(attribute.String("new", newName)))
+	ctx, span := a.tracer.Start(ctx, "rename", trace.WithAttributes(attribute.String("oldName", oldName)), trace.WithAttributes(attribute.String("newName", newName)))
 	defer span.End()
 
 	err := a.storage.Rename(ctx, oldName, newName)
@@ -146,11 +147,11 @@ func (a App) Rename(ctx context.Context, oldName, newName string) error {
 	return err
 }
 
-func (a App) Remove(ctx context.Context, pathname string) error {
-	ctx, span := a.tracer.Start(ctx, "remove", trace.WithAttributes(attribute.String("item", pathname)))
+func (a App) RemoveAll(ctx context.Context, name string) error {
+	ctx, span := a.tracer.Start(ctx, "remove_all", trace.WithAttributes(attribute.String("name", name)))
 	defer span.End()
 
-	err := a.storage.Remove(ctx, pathname)
+	err := a.storage.RemoveAll(ctx, name)
 	if err != nil {
 		span.SetStatus(codes.Error, err.Error())
 	}

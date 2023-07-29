@@ -31,7 +31,7 @@ func main() {
 
 	var hasErr bool
 
-	log.Println(storage.CreateDir(ctx, "/test"))
+	log.Println(storage.Mkdir(ctx, "/test", model.DirectoryPerm))
 	log.Println(storage.WriteTo(ctx, "/test/example.txt", strings.NewReader("Streamed content"), model.WriteOpts{}))
 	log.Println(storage.WriteTo(ctx, "/test/second.txt", strings.NewReader("Fixed size content"), model.WriteOpts{Size: 18}))
 
@@ -56,8 +56,8 @@ func main() {
 
 	log.Println(storage.Rename(ctx, "/renamed/example.txt", "/new/test.txt"))
 
-	log.Println(storage.Remove(ctx, "/renamed"))
-	log.Println(storage.Remove(ctx, "/new"))
+	log.Println(storage.RemoveAll(ctx, "/renamed"))
+	log.Println(storage.RemoveAll(ctx, "/new"))
 
 	if hasErr {
 		os.Exit(1)

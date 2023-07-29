@@ -3,8 +3,11 @@ package model
 import (
 	"context"
 	"io"
+	"os"
 	"time"
 )
+
+const DirectoryPerm = 0o700
 
 type WriteOpts struct {
 	Size int64
@@ -16,18 +19,20 @@ type ReadAtSeekCloser interface {
 }
 
 type Storage interface {
+	Stat(ctx context.Context, name string) (Item, error)
+	Mkdir(ctx context.Context, name string, perm os.FileMode) error
+	Rename(ctx context.Context, oldName, newName string) error
+	RemoveAll(ctx context.Context, name string) error
+
 	Enabled() bool
 	Name() string
 	WithIgnoreFn(ignoreFn func(Item) bool) Storage
-	Path(pathname string) string
-	Info(ctx context.Context, pathname string) (Item, error)
-	List(ctx context.Context, pathname string) ([]Item, error)
-	WriteTo(ctx context.Context, pathname string, reader io.Reader, opts WriteOpts) error
-	ReadFrom(ctx context.Context, pathname string) (ReadAtSeekCloser, error)
-	Walk(ctx context.Context, pathname string, walkFn func(Item) error) error
-	CreateDir(ctx context.Context, pathname string) error
-	Rename(ctx context.Context, oldName, newName string) error
-	Remove(ctx context.Context, pathname string) error
-	UpdateDate(ctx context.Context, pathname string, date time.Time) error
+	Path(name string) string
+
+	List(ctx context.Context, name string) ([]Item, error)
+	WriteTo(ctx context.Context, name string, reader io.Reader, opts WriteOpts) error
+	ReadFrom(ctx context.Context, name string) (ReadAtSeekCloser, error)
+	Walk(ctx context.Context, name string, walkFn func(Item) error) error
+	UpdateDate(ctx context.Context, name string, date time.Time) error
 	ConvertError(err error) error
 }

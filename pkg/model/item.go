@@ -21,6 +21,10 @@ type Item struct {
 	IsDir     bool        `json:"isDir"`
 }
 
+func (i Item) Sys() any {
+	return nil
+}
+
 func (i Item) String() string {
 	var output strings.Builder
 
@@ -44,8 +48,8 @@ func (i Item) Dir() string {
 	return Dirname(filepath.Dir(i.Pathname))
 }
 
-func ID(pathname string) string {
-	return sha(pathname)
+func ID(value string) string {
+	return strconv.FormatUint(xxh3.HashString(value), 16)
 }
 
 func Dirname(name string) string {
@@ -53,8 +57,4 @@ func Dirname(name string) string {
 		return name + "/"
 	}
 	return name
-}
-
-func sha(name string) string {
-	return strconv.FormatUint(xxh3.HashString(name), 16)
 }
