@@ -1,6 +1,7 @@
 package model
 
 import (
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -8,6 +9,11 @@ import (
 	"time"
 
 	"github.com/zeebo/xxh3"
+)
+
+var (
+	_ os.FileInfo = Item{}
+	_ fs.FileInfo = Item{}
 )
 
 type Item struct {
