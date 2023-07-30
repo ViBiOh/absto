@@ -14,16 +14,16 @@ func convertToItem(info minio.ObjectInfo) model.Item {
 	pathname := "/" + info.Key
 
 	item := model.Item{
-		ID:       model.ID(pathname),
-		Name:     name,
-		Pathname: pathname,
-		IsDir:    strings.HasSuffix(info.Key, "/"),
-		Date:     info.LastModified,
+		ID:         model.ID(pathname),
+		NameValue:  name,
+		Pathname:   pathname,
+		IsDirValue: strings.HasSuffix(info.Key, "/"),
+		Date:       info.LastModified,
 	}
 
-	if !item.IsDir {
+	if !item.IsDir() {
 		item.Extension = strings.ToLower(path.Ext(name))
-		item.Size = info.Size
+		item.SizeValue = info.Size
 	} else {
 		item.FileMode = os.ModeDir
 	}

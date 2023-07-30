@@ -39,17 +39,17 @@ func convertToItem(pathname string, info fs.FileInfo) model.Item {
 	name := info.Name()
 
 	item := model.Item{
-		ID:       model.ID(pathname),
-		Name:     name,
-		Pathname: pathname,
-		IsDir:    info.IsDir(),
-		Date:     info.ModTime(),
-		FileMode: info.Mode(),
+		ID:         model.ID(pathname),
+		NameValue:  name,
+		Pathname:   pathname,
+		IsDirValue: info.IsDir(),
+		Date:       info.ModTime(),
+		FileMode:   info.Mode(),
 	}
 
-	if !item.IsDir {
+	if !item.IsDir() {
 		item.Extension = strings.ToLower(path.Ext(name))
-		item.Size = info.Size()
+		item.SizeValue = info.Size()
 	}
 
 	return item

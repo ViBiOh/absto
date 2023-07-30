@@ -169,7 +169,7 @@ func (a App) Walk(_ context.Context, pathname string, walkFn func(model.Item) er
 
 		item := convertToItem(a.getRelativePath(path), info)
 		if a.ignoreFn != nil && a.ignoreFn(item) {
-			if item.IsDir {
+			if item.IsDir() {
 				return filepath.SkipDir
 			}
 			return nil

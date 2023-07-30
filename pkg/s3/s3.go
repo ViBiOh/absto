@@ -99,10 +99,10 @@ func (a App) Stat(ctx context.Context, pathname string) (model.Item, error) {
 
 	if realPathname == "" {
 		return model.Item{
-			ID:       model.ID(pathname),
-			Name:     "/",
-			Pathname: "/",
-			IsDir:    true,
+			ID:         model.ID(pathname),
+			NameValue:  "/",
+			Pathname:   "/",
+			IsDirValue: true,
 		}, nil
 	}
 
@@ -143,7 +143,7 @@ func (a App) List(ctx context.Context, pathname string) ([]model.Item, error) {
 	var items []model.Item
 	for object := range objectsCh {
 		item := convertToItem(object)
-		if item.IsDir && item.Name == baseRealPathname {
+		if item.IsDir() && item.Name() == baseRealPathname {
 			continue
 		}
 
@@ -234,7 +234,7 @@ func (a App) Rename(ctx context.Context, oldName, newName string) error {
 	return a.Walk(ctx, oldRoot, func(item model.Item) error {
 		pathname := a.Path(item.Pathname)
 
-		if item.IsDir {
+		if item.IsDir() {
 			pathname = model.Dirname(pathname)
 		}
 

@@ -11,14 +11,34 @@ import (
 )
 
 type Item struct {
-	Date      time.Time   `json:"date"`
-	ID        string      `json:"id"`
-	Name      string      `json:"name"`
-	Pathname  string      `json:"pathname"`
-	Extension string      `json:"extension"`
-	Size      int64       `json:"size"`
-	FileMode  os.FileMode `json:"fileMode"`
-	IsDir     bool        `json:"isDir"`
+	Date       time.Time   `json:"date"`
+	ID         string      `json:"id"`
+	NameValue  string      `json:"name"`
+	Pathname   string      `json:"pathname"`
+	Extension  string      `json:"extension"`
+	SizeValue  int64       `json:"size"`
+	FileMode   os.FileMode `json:"fileMode"`
+	IsDirValue bool        `json:"isDir"`
+}
+
+func (i Item) Name() string {
+	return i.NameValue
+}
+
+func (i Item) Size() int64 {
+	return i.SizeValue
+}
+
+func (i Item) Mode() os.FileMode {
+	return i.FileMode
+}
+
+func (i Item) ModTime() time.Time {
+	return i.Date
+}
+
+func (i Item) IsDir() bool {
+	return i.IsDirValue
 }
 
 func (i Item) Sys() any {
@@ -29,8 +49,8 @@ func (i Item) String() string {
 	var output strings.Builder
 
 	output.WriteString(i.Pathname)
-	output.WriteString(strconv.FormatBool(i.IsDir))
-	output.WriteString(strconv.FormatInt(i.Size, 10))
+	output.WriteString(strconv.FormatBool(i.IsDirValue))
+	output.WriteString(strconv.FormatInt(i.SizeValue, 10))
 	output.WriteString(strconv.FormatInt(i.Date.Unix(), 10))
 
 	return output.String()
@@ -41,7 +61,7 @@ func (i Item) IsZero() bool {
 }
 
 func (i Item) Dir() string {
-	if i.IsDir {
+	if i.IsDirValue {
 		return i.Pathname
 	}
 
