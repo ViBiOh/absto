@@ -77,12 +77,12 @@ func (a App) Path(pathname string) string {
 	return a.rootDirectory + "/" + pathname
 }
 
-func (a App) Stat(_ context.Context, pathname string) (model.Item, error) {
-	if err := model.ValidPath(pathname); err != nil {
+func (a App) Stat(_ context.Context, name string) (model.Item, error) {
+	if err := model.ValidPath(name); err != nil {
 		return model.Item{}, err
 	}
 
-	fullpath := a.Path(pathname)
+	fullpath := a.Path(name)
 
 	info, err := os.Stat(fullpath)
 	if err != nil {
@@ -120,6 +120,18 @@ func (a App) List(_ context.Context, pathname string) ([]model.Item, error) {
 	}
 
 	return items, nil
+}
+
+func (a App) OpenFile(ctx context.Context, name string, _ int, _ os.FileMode) (*model.FileItem, error) {
+	item, err := a.Stat(ctx, name)
+	if err != nil {
+		return nil, fmt.Errorf("stat: %w", err)
+	}
+
+	return &model.FileItem{
+		Item:    item,
+		Storage: a,
+	}, nil
 }
 
 func (a App) WriteTo(_ context.Context, pathname string, reader io.Reader, _ model.WriteOpts) error {

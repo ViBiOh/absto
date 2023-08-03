@@ -157,6 +157,18 @@ func (a App) List(ctx context.Context, pathname string) ([]model.Item, error) {
 	return items, nil
 }
 
+func (a App) OpenFile(ctx context.Context, name string, _ int, _ os.FileMode) (*model.FileItem, error) {
+	item, err := a.Stat(ctx, name)
+	if err != nil {
+		return nil, fmt.Errorf("stat: %w", err)
+	}
+
+	return &model.FileItem{
+		Item:    item,
+		Storage: a,
+	}, nil
+}
+
 func (a App) WriteTo(ctx context.Context, pathname string, reader io.Reader, opts model.WriteOpts) error {
 	if opts.Size == 0 {
 		opts.Size = -1

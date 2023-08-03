@@ -61,6 +61,17 @@ func (a App) Stat(ctx context.Context, name string) (model.Item, error) {
 	return output, err
 }
 
+func (a App) OpenFile(ctx context.Context, name string, flag int, perm os.FileMode) (*model.FileItem, error) {
+	item, err := a.storage.OpenFile(ctx, name, flag, perm)
+	if err != nil {
+		return nil, err
+	}
+
+	item.Storage = a
+
+	return item, nil
+}
+
 func (a App) List(ctx context.Context, pathname string) ([]model.Item, error) {
 	ctx, span := a.tracer.Start(ctx, "list", trace.WithAttributes(attribute.String("item", pathname)))
 	defer span.End()

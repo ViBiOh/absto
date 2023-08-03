@@ -1,6 +1,8 @@
 package model
 
 import (
+	"context"
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -15,6 +17,59 @@ var (
 	_ os.FileInfo = Item{}
 	_ fs.FileInfo = Item{}
 )
+
+type FileItem struct {
+	Storage Storage
+	reader  ReadAtSeekCloser
+	Item
+}
+
+func (fi *FileItem) initReader() error {
+	if fi.reader != nil {
+		return nil
+	}
+
+	var err error
+
+	fi.reader, err = fi.Storage.ReadFrom(context.Background(), fi.Pathname)
+	if err != nil {
+		return fmt.Errorf("read from: %w", err)
+	}
+
+	return nil
+}
+
+func (fi *FileItem) Read(p []byte) (int, error) {
+	if err := fi.initReader(); err != nil {
+		return 0, nil
+	}
+
+	return fi.reader.Read(p)
+}
+
+func (fi *FileItem) ReadAt(p []byte, off int64) (int, error) {
+	if err := fi.initReader(); err != nil {
+		return 0, nil
+	}
+
+	return fi.reader.ReadAt(p, off)
+}
+
+func (fi *FileItem) Seek(offset int64, whence int) (int64, error) {
+	if err := fi.initReader(); err != nil {
+		return 0, nil
+	}
+
+	return fi.reader.Seek(offset, whence)
+}
+
+func (fi *FileItem) Close() error {
+	if fi.reader == nil {
+		return nil
+	}
+
+	return fi.reader.Close()
+}
 
 type Item struct {
 	Date       time.Time   `json:"date"`

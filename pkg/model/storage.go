@@ -21,6 +21,7 @@ type ReadAtSeekCloser interface {
 type Storage interface {
 	Stat(ctx context.Context, name string) (Item, error)
 	Mkdir(ctx context.Context, name string, perm os.FileMode) error
+	OpenFile(ctx context.Context, name string, flag int, perm os.FileMode) (*FileItem, error)
 	Rename(ctx context.Context, oldName, newName string) error
 	RemoveAll(ctx context.Context, name string) error
 
