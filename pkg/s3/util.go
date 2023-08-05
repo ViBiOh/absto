@@ -25,7 +25,7 @@ func convertToItem(info minio.ObjectInfo) model.Item {
 		item.Extension = strings.ToLower(path.Ext(name))
 		item.SizeValue = info.Size
 	} else {
-		item.FileMode = os.ModeDir
+		item.FileMode = uint32(os.ModeDir)
 	}
 
 	return item

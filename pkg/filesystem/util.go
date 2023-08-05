@@ -44,7 +44,7 @@ func convertToItem(pathname string, info fs.FileInfo) model.Item {
 		Pathname:   pathname,
 		IsDirValue: info.IsDir(),
 		Date:       info.ModTime(),
-		FileMode:   info.Mode(),
+		FileMode:   uint32(info.Mode()),
 	}
 
 	if !item.IsDir() {

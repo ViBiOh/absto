@@ -1,6 +1,7 @@
 package filesystem
 
 import (
+	"encoding/json"
 	"errors"
 	"io/fs"
 	"os"
@@ -130,7 +131,7 @@ func TestConvertToItem(t *testing.T) {
 				IsDirValue: false,
 				Date:       readmeInfo.ModTime(),
 				SizeValue:  readmeInfo.Size(),
-				FileMode:   readmeInfo.Mode(),
+				FileMode:   uint32(readmeInfo.Mode()),
 			},
 		},
 	}
@@ -201,5 +202,31 @@ func BenchmarkConvertToItem(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		convertToItem("/pkg/filesystem/utils_test.go", info)
+	}
+}
+
+func BenchmarkJsonItem(b *testing.B) {
+	info, err := os.Stat("util_test.go")
+	if err != nil {
+		b.Error(err)
+	}
+
+	item := convertToItem("/pkg/filesystem/utils_test.go", info)
+
+	for i := 0; i < b.N; i++ {
+		_, _ = json.Marshal(item)
+	}
+}
+
+func BenchmarkMsgpItem(b *testing.B) {
+	info, err := os.Stat("util_test.go")
+	if err != nil {
+		b.Error(err)
+	}
+
+	item := convertToItem("/pkg/filesystem/utils_test.go", info)
+
+	for i := 0; i < b.N; i++ {
+		_, _ = item.MarshalMsg(nil)
 	}
 }

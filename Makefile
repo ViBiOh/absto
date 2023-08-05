@@ -81,6 +81,12 @@ bench:
 run:
 	$(MAIN_RUNNER)
 
+## msgp: Generate msgp encoder
+.PHONY: msgp
+msgp:
+	go install "github.com/tinylib/msgp@latest"
+	go generate -run msgp $(PACKAGES)
+
 ## config: Create local configuration
 .PHONY: config
 config:
