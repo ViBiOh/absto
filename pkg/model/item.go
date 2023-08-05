@@ -13,9 +13,6 @@ import (
 	"github.com/zeebo/xxh3"
 )
 
-//go:generate msgp
-//msgp:ignore FileItem Storage
-
 var (
 	_ os.FileInfo = Item{}
 	_ fs.FileInfo = Item{}
@@ -102,17 +99,15 @@ func (fi *FileItem) Readdir(count int) ([]fs.FileInfo, error) {
 	return output, nil
 }
 
-//msgp:tuple Item
-
 type Item struct {
-	Date       time.Time `msg:"date" json:"date"`
-	ID         string    `msg:"id" json:"id"`
-	NameValue  string    `msg:"name" json:"name"`
-	Pathname   string    `msg:"pathname" json:"pathname"`
-	Extension  string    `msg:"extension" json:"extension"`
-	SizeValue  int64     `msg:"size" json:"size"`
-	FileMode   uint32    `msg:"fileMode" json:"fileMode"`
-	IsDirValue bool      `msg:"isDir" json:"isDir"`
+	Date       time.Time   `msg:"date" json:"date"`
+	ID         string      `msg:"id" json:"id"`
+	NameValue  string      `msg:"name" json:"name"`
+	Pathname   string      `msg:"pathname" json:"pathname"`
+	Extension  string      `msg:"extension" json:"extension"`
+	SizeValue  int64       `msg:"size" json:"size"`
+	FileMode   os.FileMode `msg:"fileMode" json:"fileMode"`
+	IsDirValue bool        `msg:"isDir" json:"isDir"`
 }
 
 func (i Item) Name() string {
@@ -124,7 +119,7 @@ func (i Item) Size() int64 {
 }
 
 func (i Item) Mode() os.FileMode {
-	return os.FileMode(i.FileMode)
+	return i.FileMode
 }
 
 func (i Item) ModTime() time.Time {

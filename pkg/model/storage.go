@@ -7,7 +7,10 @@ import (
 	"time"
 )
 
-const DirectoryPerm = 0o700
+const (
+	DirectoryPerm   = 0o700
+	RegularFilePerm = 0o600
+)
 
 type WriteOpts struct {
 	Size int64

@@ -1,7 +1,6 @@
 package s3
 
 import (
-	"os"
 	"path"
 	"strings"
 
@@ -24,8 +23,9 @@ func convertToItem(info minio.ObjectInfo) model.Item {
 	if !item.IsDir() {
 		item.Extension = strings.ToLower(path.Ext(name))
 		item.SizeValue = info.Size
+		item.FileMode = model.RegularFilePerm
 	} else {
-		item.FileMode = uint32(os.ModeDir)
+		item.FileMode = model.DirectoryPerm
 	}
 
 	return item
