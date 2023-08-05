@@ -22,6 +22,7 @@ type FileItem struct {
 	Storage Storage
 	reader  ReadAtSeekCloser
 	Item
+	readdirPosition int
 }
 
 func (fi *FileItem) initReader() error {
@@ -69,6 +70,33 @@ func (fi *FileItem) Close() error {
 	}
 
 	return fi.reader.Close()
+}
+
+func (fi *FileItem) Readdir(count int) ([]fs.FileInfo, error) {
+	if !fi.IsDirValue {
+		return nil, os.ErrInvalid
+	}
+
+	items, err := fi.Storage.List(context.Background(), fi.Pathname)
+	if err != nil {
+		return nil, err
+	}
+
+	var start, end int
+
+	if count <= 0 {
+		end = len(items)
+	} else {
+		start = fi.readdirPosition
+		end = start + count
+	}
+
+	output := make([]fs.FileInfo, 0, end-start)
+	for ; start < end && start < len(items); start++ {
+		output = append(output, items[start])
+	}
+
+	return output, nil
 }
 
 type Item struct {
