@@ -2,7 +2,9 @@ package model
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -21,6 +23,7 @@ var (
 type FileItem struct {
 	Storage Storage
 	reader  ReadAtSeekCloser
+	writer  io.WriteCloser
 	Item
 	readdirPosition int
 }
@@ -64,12 +67,41 @@ func (fi *FileItem) Seek(offset int64, whence int) (int64, error) {
 	return fi.reader.Seek(offset, whence)
 }
 
-func (fi *FileItem) Close() error {
-	if fi.reader == nil {
+func (fi *FileItem) initWriter() error {
+	if fi.writer != nil {
 		return nil
 	}
 
-	return fi.reader.Close()
+	var err error
+
+	fi.writer, err = fi.Storage.Writer(context.Background(), fi.Pathname)
+	if err != nil {
+		return fmt.Errorf("writer: %w", err)
+	}
+
+	return nil
+}
+
+func (fi *FileItem) Write(p []byte) (n int, err error) {
+	if err := fi.initWriter(); err != nil {
+		return 0, nil
+	}
+
+	return fi.writer.Write(p)
+}
+
+func (fi *FileItem) Close() error {
+	var err error
+
+	if fi.reader != nil {
+		err = fi.reader.Close()
+	}
+
+	if fi.writer != nil {
+		err = errors.Join(err, fi.writer.Close())
+	}
+
+	return err
 }
 
 func (fi *FileItem) Readdir(count int) ([]fs.FileInfo, error) {

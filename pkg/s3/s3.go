@@ -10,11 +10,12 @@ import (
 	"time"
 
 	"github.com/ViBiOh/absto/pkg/model"
+	"github.com/ViBiOh/httputils/v4/pkg/logger"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 )
 
-const Name = "s3"
+const Name = "object"
 
 var _ model.Storage = App{}
 
@@ -65,7 +66,7 @@ func New(endpoint, accessKey, secretAccess, bucket string, useSSL bool, partSize
 		Region: config.region,
 	})
 	if err != nil {
-		return App{}, fmt.Errorf("create minio client: %w", err)
+		return App{}, fmt.Errorf("minio client: %w", err)
 	}
 
 	return App{
@@ -169,6 +170,18 @@ func (a App) OpenFile(ctx context.Context, name string, _ int, _ os.FileMode) (*
 	}, nil
 }
 
+func (a App) Writer(ctx context.Context, name string) (io.WriteCloser, error) {
+	reader, writer := io.Pipe()
+
+	go func() {
+		if err := a.WriteTo(ctx, name, reader, model.WriteOpts{}); err != nil {
+			logger.WithField("name", name).Error("write: %s", err)
+		}
+	}()
+
+	return writer, nil
+}
+
 func (a App) WriteTo(ctx context.Context, pathname string, reader io.Reader, opts model.WriteOpts) error {
 	if opts.Size == 0 {
 		opts.Size = -1
@@ -203,18 +216,22 @@ func (a App) Walk(ctx context.Context, pathname string, walkFn func(model.Item) 
 		Recursive: true,
 	})
 
+	var err error
+
 	for object := range objectsCh {
+		if err != nil {
+			continue
+		}
+
 		item := convertToItem(object)
 		if a.ignoreFn != nil && a.ignoreFn(item) {
 			continue
 		}
 
-		if err := walkFn(item); err != nil {
-			return err
-		}
+		err = walkFn(item)
 	}
 
-	return nil
+	return err
 }
 
 func (a App) Mkdir(ctx context.Context, name string, _ os.FileMode) error {

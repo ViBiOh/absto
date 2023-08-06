@@ -45,8 +45,8 @@ func (a App) WithIgnoreFn(ignoreFn func(model.Item) bool) model.Storage {
 	}
 }
 
-func (a App) Path(pathname string) string {
-	return a.storage.Path(pathname)
+func (a App) Path(name string) string {
+	return a.storage.Path(name)
 }
 
 func (a App) Stat(ctx context.Context, name string) (model.Item, error) {
@@ -62,8 +62,13 @@ func (a App) Stat(ctx context.Context, name string) (model.Item, error) {
 }
 
 func (a App) OpenFile(ctx context.Context, name string, flag int, perm os.FileMode) (*model.FileItem, error) {
+	ctx, span := a.tracer.Start(ctx, "open", trace.WithAttributes(attribute.String("name", name)))
+	defer span.End()
+
 	item, err := a.storage.OpenFile(ctx, name, flag, perm)
 	if err != nil {
+		span.SetStatus(codes.Error, err.Error())
+
 		return nil, err
 	}
 
@@ -72,11 +77,11 @@ func (a App) OpenFile(ctx context.Context, name string, flag int, perm os.FileMo
 	return item, nil
 }
 
-func (a App) List(ctx context.Context, pathname string) ([]model.Item, error) {
-	ctx, span := a.tracer.Start(ctx, "list", trace.WithAttributes(attribute.String("item", pathname)))
+func (a App) List(ctx context.Context, name string) ([]model.Item, error) {
+	ctx, span := a.tracer.Start(ctx, "list", trace.WithAttributes(attribute.String("name", name)))
 	defer span.End()
 
-	output, err := a.storage.List(ctx, pathname)
+	output, err := a.storage.List(ctx, name)
 	if err != nil {
 		span.SetStatus(codes.Error, err.Error())
 	}
@@ -84,11 +89,23 @@ func (a App) List(ctx context.Context, pathname string) ([]model.Item, error) {
 	return output, err
 }
 
-func (a App) WriteTo(ctx context.Context, pathname string, reader io.Reader, opts model.WriteOpts) error {
-	ctx, span := a.tracer.Start(ctx, "writeTo", trace.WithAttributes(attribute.String("item", pathname)))
+func (a App) Writer(ctx context.Context, name string) (io.WriteCloser, error) {
+	ctx, span := a.tracer.Start(ctx, "writer", trace.WithAttributes(attribute.String("name", name)))
 	defer span.End()
 
-	err := a.storage.WriteTo(ctx, pathname, reader, opts)
+	writer, err := a.storage.Writer(ctx, name)
+	if err != nil {
+		span.SetStatus(codes.Error, err.Error())
+	}
+
+	return writer, err
+}
+
+func (a App) WriteTo(ctx context.Context, name string, reader io.Reader, opts model.WriteOpts) error {
+	ctx, span := a.tracer.Start(ctx, "writeTo", trace.WithAttributes(attribute.String("name", name)))
+	defer span.End()
+
+	err := a.storage.WriteTo(ctx, name, reader, opts)
 	if err != nil {
 		span.SetStatus(codes.Error, err.Error())
 	}
@@ -96,10 +113,10 @@ func (a App) WriteTo(ctx context.Context, pathname string, reader io.Reader, opt
 	return err
 }
 
-func (a App) ReadFrom(ctx context.Context, pathname string) (model.ReadAtSeekCloser, error) {
-	ctx, span := a.tracer.Start(ctx, "readFrom", trace.WithAttributes(attribute.String("item", pathname)))
+func (a App) ReadFrom(ctx context.Context, name string) (model.ReadAtSeekCloser, error) {
+	ctx, span := a.tracer.Start(ctx, "readFrom", trace.WithAttributes(attribute.String("name", name)))
 
-	reader, err := a.storage.ReadFrom(ctx, pathname)
+	reader, err := a.storage.ReadFrom(ctx, name)
 	if err != nil {
 		span.SetStatus(codes.Error, err.Error())
 	}
@@ -110,11 +127,11 @@ func (a App) ReadFrom(ctx context.Context, pathname string) (model.ReadAtSeekClo
 	}, err
 }
 
-func (a App) UpdateDate(ctx context.Context, pathname string, date time.Time) error {
-	ctx, span := a.tracer.Start(ctx, "updateDate", trace.WithAttributes(attribute.String("item", pathname)))
+func (a App) UpdateDate(ctx context.Context, name string, date time.Time) error {
+	ctx, span := a.tracer.Start(ctx, "updateDate", trace.WithAttributes(attribute.String("name", name)))
 	defer span.End()
 
-	err := a.storage.UpdateDate(ctx, pathname, date)
+	err := a.storage.UpdateDate(ctx, name, date)
 	if err != nil {
 		span.SetStatus(codes.Error, err.Error())
 	}
@@ -122,11 +139,11 @@ func (a App) UpdateDate(ctx context.Context, pathname string, date time.Time) er
 	return err
 }
 
-func (a App) Walk(ctx context.Context, pathname string, walkFn func(model.Item) error) error {
-	ctx, span := a.tracer.Start(ctx, "walk", trace.WithAttributes(attribute.String("item", pathname)))
+func (a App) Walk(ctx context.Context, name string, walkFn func(model.Item) error) error {
+	ctx, span := a.tracer.Start(ctx, "walk", trace.WithAttributes(attribute.String("name", name)))
 	defer span.End()
 
-	err := a.storage.Walk(ctx, pathname, walkFn)
+	err := a.storage.Walk(ctx, name, walkFn)
 	if err != nil {
 		span.SetStatus(codes.Error, err.Error())
 	}
@@ -135,7 +152,7 @@ func (a App) Walk(ctx context.Context, pathname string, walkFn func(model.Item) 
 }
 
 func (a App) Mkdir(ctx context.Context, name string, perm os.FileMode) error {
-	ctx, span := a.tracer.Start(ctx, "createDir", trace.WithAttributes(attribute.String("name", name)))
+	ctx, span := a.tracer.Start(ctx, "mkdir", trace.WithAttributes(attribute.String("name", name)))
 	defer span.End()
 
 	err := a.storage.Mkdir(ctx, name, perm)
@@ -159,7 +176,7 @@ func (a App) Rename(ctx context.Context, oldName, newName string) error {
 }
 
 func (a App) RemoveAll(ctx context.Context, name string) error {
-	ctx, span := a.tracer.Start(ctx, "remove_all", trace.WithAttributes(attribute.String("name", name)))
+	ctx, span := a.tracer.Start(ctx, "removeAll", trace.WithAttributes(attribute.String("name", name)))
 	defer span.End()
 
 	err := a.storage.RemoveAll(ctx, name)

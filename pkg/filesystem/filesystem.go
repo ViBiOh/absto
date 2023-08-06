@@ -17,7 +17,7 @@ import (
 	"github.com/ViBiOh/absto/pkg/model"
 )
 
-const Name = "fs"
+const Name = "filesystem"
 
 var _ model.Storage = App{}
 
@@ -132,6 +132,14 @@ func (a App) OpenFile(ctx context.Context, name string, _ int, _ os.FileMode) (*
 		Item:    item,
 		Storage: a,
 	}, nil
+}
+
+func (a App) Writer(_ context.Context, name string) (io.WriteCloser, error) {
+	if err := model.ValidPath(name); err != nil {
+		return nil, err
+	}
+
+	return a.getWritableFile(name)
 }
 
 func (a App) WriteTo(_ context.Context, pathname string, reader io.Reader, _ model.WriteOpts) error {

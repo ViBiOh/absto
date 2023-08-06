@@ -34,9 +34,11 @@ type Storage interface {
 	Path(name string) string
 
 	List(ctx context.Context, name string) ([]Item, error)
+	Writer(_ context.Context, name string) (io.WriteCloser, error)
 	WriteTo(ctx context.Context, name string, reader io.Reader, opts WriteOpts) error
 	ReadFrom(ctx context.Context, name string) (ReadAtSeekCloser, error)
 	Walk(ctx context.Context, name string, walkFn func(Item) error) error
+
 	UpdateDate(ctx context.Context, name string, date time.Time) error
 	ConvertError(err error) error
 }

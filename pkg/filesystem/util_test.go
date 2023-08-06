@@ -84,13 +84,13 @@ func TestGetMode(t *testing.T) {
 			args{
 				name: "/photos/",
 			},
-			0o700,
+			model.DirectoryPerm,
 		},
 		"file": {
 			args{
 				name: "/photo.png",
 			},
-			0o600,
+			model.RegularFilePerm,
 		},
 	}
 

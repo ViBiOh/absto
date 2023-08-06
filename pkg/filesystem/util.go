@@ -29,10 +29,10 @@ func (a App) getWritableFile(filename string) (io.WriteCloser, error) {
 
 func getMode(name string) os.FileMode {
 	if strings.HasSuffix(name, "/") {
-		return 0o700
+		return model.DirectoryPerm
 	}
 
-	return 0o600
+	return model.RegularFilePerm
 }
 
 func convertToItem(pathname string, info fs.FileInfo) model.Item {
