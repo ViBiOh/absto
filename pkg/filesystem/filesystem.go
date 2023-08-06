@@ -69,12 +69,12 @@ func (a App) WithIgnoreFn(ignoreFn func(model.Item) bool) model.Storage {
 	return a
 }
 
-func (a App) Path(pathname string) string {
-	if strings.HasPrefix(pathname, "/") {
-		return a.rootDirectory + pathname
+func (a App) Path(name string) string {
+	if strings.HasPrefix(name, "/") {
+		return a.rootDirectory + name
 	}
 
-	return a.rootDirectory + "/" + pathname
+	return a.rootDirectory + "/" + name
 }
 
 func (a App) Stat(_ context.Context, name string) (model.Item, error) {
@@ -92,12 +92,12 @@ func (a App) Stat(_ context.Context, name string) (model.Item, error) {
 	return convertToItem(a.getRelativePath(fullpath), info), nil
 }
 
-func (a App) List(_ context.Context, pathname string) ([]model.Item, error) {
-	if err := model.ValidPath(pathname); err != nil {
+func (a App) List(_ context.Context, name string) ([]model.Item, error) {
+	if err := model.ValidPath(name); err != nil {
 		return nil, err
 	}
 
-	fullpath := a.Path(pathname)
+	fullpath := a.Path(name)
 
 	files, err := os.ReadDir(fullpath)
 	if err != nil {
@@ -122,32 +122,20 @@ func (a App) List(_ context.Context, pathname string) ([]model.Item, error) {
 	return items, nil
 }
 
-func (a App) OpenFile(ctx context.Context, name string, _ int, _ os.FileMode) (*model.FileItem, error) {
-	item, err := a.Stat(ctx, name)
-	if err != nil {
-		return nil, fmt.Errorf("stat: %w", err)
-	}
-
-	return &model.FileItem{
-		Item:    item,
-		Storage: a,
-	}, nil
-}
-
-func (a App) Writer(_ context.Context, name string) (io.WriteCloser, error) {
+func (a App) OpenFile(ctx context.Context, name string, flags int, perm os.FileMode) (model.File, error) {
 	if err := model.ValidPath(name); err != nil {
 		return nil, err
 	}
 
-	return a.getWritableFile(name)
+	return os.OpenFile(a.Path(name), flags, perm)
 }
 
-func (a App) WriteTo(_ context.Context, pathname string, reader io.Reader, _ model.WriteOpts) error {
-	if err := model.ValidPath(pathname); err != nil {
+func (a App) WriteTo(_ context.Context, name string, reader io.Reader, _ model.WriteOpts) error {
+	if err := model.ValidPath(name); err != nil {
 		return err
 	}
 
-	writer, err := a.getWritableFile(pathname)
+	writer, err := a.getWritableFile(name)
 	if err != nil {
 		return err
 	}
@@ -155,34 +143,33 @@ func (a App) WriteTo(_ context.Context, pathname string, reader io.Reader, _ mod
 	buffer := bufferPool.Get().(*bytes.Buffer)
 	defer bufferPool.Put(buffer)
 
-	_, err = io.CopyBuffer(writer, reader, buffer.Bytes())
-	if err != nil {
+	if _, err = io.CopyBuffer(writer, reader, buffer.Bytes()); err != nil {
 		err = a.ConvertError(err)
 	}
 
 	return errors.Join(err, writer.Close())
 }
 
-func (a App) ReadFrom(_ context.Context, pathname string) (model.ReadAtSeekCloser, error) {
-	if err := model.ValidPath(pathname); err != nil {
+func (a App) ReadFrom(_ context.Context, name string) (model.ReadAtSeekCloser, error) {
+	if err := model.ValidPath(name); err != nil {
 		return nil, err
 	}
 
-	return a.getReadableFile(pathname)
+	return a.getReadableFile(name)
 }
 
-func (a App) UpdateDate(_ context.Context, pathname string, date time.Time) error {
-	if err := model.ValidPath(pathname); err != nil {
+func (a App) UpdateDate(_ context.Context, name string, date time.Time) error {
+	if err := model.ValidPath(name); err != nil {
 		return err
 	}
 
-	return a.ConvertError(os.Chtimes(a.Path(pathname), date, date))
+	return a.ConvertError(os.Chtimes(a.Path(name), date, date))
 }
 
-func (a App) Walk(_ context.Context, pathname string, walkFn func(model.Item) error) error {
-	pathname = a.Path(pathname)
+func (a App) Walk(_ context.Context, name string, walkFn func(model.Item) error) error {
+	name = a.Path(name)
 
-	return a.ConvertError(filepath.Walk(pathname, func(path string, info fs.FileInfo, err error) error {
+	return a.ConvertError(filepath.Walk(name, func(path string, info fs.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}

@@ -61,7 +61,7 @@ func (a App) Stat(ctx context.Context, name string) (model.Item, error) {
 	return output, err
 }
 
-func (a App) OpenFile(ctx context.Context, name string, flag int, perm os.FileMode) (*model.FileItem, error) {
+func (a App) OpenFile(ctx context.Context, name string, flag int, perm os.FileMode) (model.File, error) {
 	ctx, span := a.tracer.Start(ctx, "open", trace.WithAttributes(attribute.String("name", name)))
 	defer span.End()
 
@@ -71,8 +71,6 @@ func (a App) OpenFile(ctx context.Context, name string, flag int, perm os.FileMo
 
 		return nil, err
 	}
-
-	item.Storage = a
 
 	return item, nil
 }
@@ -87,18 +85,6 @@ func (a App) List(ctx context.Context, name string) ([]model.Item, error) {
 	}
 
 	return output, err
-}
-
-func (a App) Writer(ctx context.Context, name string) (io.WriteCloser, error) {
-	ctx, span := a.tracer.Start(ctx, "writer", trace.WithAttributes(attribute.String("name", name)))
-	defer span.End()
-
-	writer, err := a.storage.Writer(ctx, name)
-	if err != nil {
-		span.SetStatus(codes.Error, err.Error())
-	}
-
-	return writer, err
 }
 
 func (a App) WriteTo(ctx context.Context, name string, reader io.Reader, opts model.WriteOpts) error {

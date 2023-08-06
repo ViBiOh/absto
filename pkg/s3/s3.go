@@ -2,6 +2,7 @@ package s3
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -10,7 +11,6 @@ import (
 	"time"
 
 	"github.com/ViBiOh/absto/pkg/model"
-	"github.com/ViBiOh/httputils/v4/pkg/logger"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 )
@@ -158,28 +158,8 @@ func (a App) List(ctx context.Context, pathname string) ([]model.Item, error) {
 	return items, nil
 }
 
-func (a App) OpenFile(ctx context.Context, name string, _ int, _ os.FileMode) (*model.FileItem, error) {
-	item, err := a.Stat(ctx, name)
-	if err != nil {
-		return nil, fmt.Errorf("stat: %w", err)
-	}
-
-	return &model.FileItem{
-		Item:    item,
-		Storage: a,
-	}, nil
-}
-
-func (a App) Writer(ctx context.Context, name string) (io.WriteCloser, error) {
-	reader, writer := io.Pipe()
-
-	go func() {
-		if err := a.WriteTo(ctx, name, reader, model.WriteOpts{}); err != nil {
-			logger.WithField("name", name).Error("write: %s", err)
-		}
-	}()
-
-	return writer, nil
+func (a App) OpenFile(ctx context.Context, name string, _ int, _ os.FileMode) (model.File, error) {
+	return nil, errors.New("not implemented")
 }
 
 func (a App) WriteTo(ctx context.Context, pathname string, reader io.Reader, opts model.WriteOpts) error {

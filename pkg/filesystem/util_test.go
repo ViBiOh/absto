@@ -13,7 +13,7 @@ import (
 
 func TestPath(t *testing.T) {
 	type args struct {
-		pathname string
+		name string
 	}
 
 	cases := map[string]struct {
@@ -26,7 +26,7 @@ func TestPath(t *testing.T) {
 				rootDirectory: "/home/users",
 			},
 			args{
-				pathname: "/test",
+				name: "/test",
 			},
 			"/home/users/test",
 		},
@@ -34,7 +34,7 @@ func TestPath(t *testing.T) {
 
 	for intention, tc := range cases {
 		t.Run(intention, func(t *testing.T) {
-			if got := tc.instance.Path(tc.args.pathname); got != tc.want {
+			if got := tc.instance.Path(tc.args.name); got != tc.want {
 				t.Errorf("Path() = `%s`, want `%s`", got, tc.want)
 			}
 		})
@@ -200,6 +200,7 @@ func BenchmarkConvertToItem(b *testing.B) {
 		b.Error(err)
 	}
 
+	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		convertToItem("/pkg/filesystem/utils_test.go", info)
 	}
@@ -213,6 +214,7 @@ func BenchmarkJsonItem(b *testing.B) {
 
 	item := convertToItem("/pkg/filesystem/utils_test.go", info)
 
+	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_, _ = json.Marshal(item)
 	}

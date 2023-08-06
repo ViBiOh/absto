@@ -10,8 +10,8 @@ import (
 	"github.com/ViBiOh/absto/pkg/model"
 )
 
-func (a App) getRelativePath(pathname string) string {
-	return strings.TrimPrefix(pathname, a.rootDirectory)
+func (a App) getRelativePath(name string) string {
+	return strings.TrimPrefix(name, a.rootDirectory)
 }
 
 func (a App) getFile(filename string, flags int) (*os.File, error) {
@@ -20,11 +20,11 @@ func (a App) getFile(filename string, flags int) (*os.File, error) {
 }
 
 func (a App) getReadableFile(filename string) (model.ReadAtSeekCloser, error) {
-	return a.getFile(filename, os.O_RDONLY)
+	return a.getFile(filename, model.ReadFlag)
 }
 
 func (a App) getWritableFile(filename string) (io.WriteCloser, error) {
-	return a.getFile(filename, os.O_RDWR|os.O_CREATE|os.O_TRUNC)
+	return a.getFile(filename, model.WriteFlag)
 }
 
 func getMode(name string) os.FileMode {
