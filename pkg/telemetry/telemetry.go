@@ -19,15 +19,16 @@ type App struct {
 	storage model.Storage
 }
 
-func New(storage model.Storage, tracer trace.Tracer) model.Storage {
-	if tracer == nil {
-		return storage
+func New(storage model.Storage, tracerProvider trace.TracerProvider) model.Storage {
+	app := App{
+		storage: storage,
 	}
 
-	return App{
-		storage: storage,
-		tracer:  tracer,
+	if tracerProvider != nil {
+		app.tracer = tracerProvider.Tracer("absto")
 	}
+
+	return app
 }
 
 func (a App) Enabled() bool {
