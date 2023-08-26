@@ -12,45 +12,45 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-var _ model.Storage = App{}
+var _ model.Storage = Service{}
 
-type App struct {
+type Service struct {
 	tracer  trace.Tracer
 	storage model.Storage
 }
 
 func New(storage model.Storage, tracerProvider trace.TracerProvider) model.Storage {
-	app := App{
+	service := Service{
 		storage: storage,
 	}
 
 	if tracerProvider != nil {
-		app.tracer = tracerProvider.Tracer("absto")
+		service.tracer = tracerProvider.Tracer("absto")
 	}
 
-	return app
+	return service
 }
 
-func (a App) Enabled() bool {
+func (a Service) Enabled() bool {
 	return a.storage.Enabled()
 }
 
-func (a App) Name() string {
+func (a Service) Name() string {
 	return a.storage.Name()
 }
 
-func (a App) WithIgnoreFn(ignoreFn func(model.Item) bool) model.Storage {
-	return App{
+func (a Service) WithIgnoreFn(ignoreFn func(model.Item) bool) model.Storage {
+	return Service{
 		storage: a.storage.WithIgnoreFn(ignoreFn),
 		tracer:  a.tracer,
 	}
 }
 
-func (a App) Path(name string) string {
+func (a Service) Path(name string) string {
 	return a.storage.Path(name)
 }
 
-func (a App) Stat(ctx context.Context, name string) (model.Item, error) {
+func (a Service) Stat(ctx context.Context, name string) (model.Item, error) {
 	ctx, span := a.tracer.Start(ctx, "stat", trace.WithAttributes(attribute.String("name", name)))
 	defer span.End()
 
@@ -62,7 +62,7 @@ func (a App) Stat(ctx context.Context, name string) (model.Item, error) {
 	return output, err
 }
 
-func (a App) OpenFile(ctx context.Context, name string, flag int, perm os.FileMode) (model.File, error) {
+func (a Service) OpenFile(ctx context.Context, name string, flag int, perm os.FileMode) (model.File, error) {
 	ctx, span := a.tracer.Start(ctx, "open", trace.WithAttributes(attribute.String("name", name)))
 	defer span.End()
 
@@ -76,7 +76,7 @@ func (a App) OpenFile(ctx context.Context, name string, flag int, perm os.FileMo
 	return item, nil
 }
 
-func (a App) List(ctx context.Context, name string) ([]model.Item, error) {
+func (a Service) List(ctx context.Context, name string) ([]model.Item, error) {
 	ctx, span := a.tracer.Start(ctx, "list", trace.WithAttributes(attribute.String("name", name)))
 	defer span.End()
 
@@ -88,7 +88,7 @@ func (a App) List(ctx context.Context, name string) ([]model.Item, error) {
 	return output, err
 }
 
-func (a App) WriteTo(ctx context.Context, name string, reader io.Reader, opts model.WriteOpts) error {
+func (a Service) WriteTo(ctx context.Context, name string, reader io.Reader, opts model.WriteOpts) error {
 	ctx, span := a.tracer.Start(ctx, "writeTo", trace.WithAttributes(attribute.String("name", name)))
 	defer span.End()
 
@@ -100,7 +100,7 @@ func (a App) WriteTo(ctx context.Context, name string, reader io.Reader, opts mo
 	return err
 }
 
-func (a App) ReadFrom(ctx context.Context, name string) (model.ReadAtSeekCloser, error) {
+func (a Service) ReadFrom(ctx context.Context, name string) (model.ReadAtSeekCloser, error) {
 	ctx, span := a.tracer.Start(ctx, "readFrom", trace.WithAttributes(attribute.String("name", name)))
 
 	reader, err := a.storage.ReadFrom(ctx, name)
@@ -114,7 +114,7 @@ func (a App) ReadFrom(ctx context.Context, name string) (model.ReadAtSeekCloser,
 	}, err
 }
 
-func (a App) UpdateDate(ctx context.Context, name string, date time.Time) error {
+func (a Service) UpdateDate(ctx context.Context, name string, date time.Time) error {
 	ctx, span := a.tracer.Start(ctx, "updateDate", trace.WithAttributes(attribute.String("name", name)))
 	defer span.End()
 
@@ -126,7 +126,7 @@ func (a App) UpdateDate(ctx context.Context, name string, date time.Time) error 
 	return err
 }
 
-func (a App) Walk(ctx context.Context, name string, walkFn func(model.Item) error) error {
+func (a Service) Walk(ctx context.Context, name string, walkFn func(model.Item) error) error {
 	ctx, span := a.tracer.Start(ctx, "walk", trace.WithAttributes(attribute.String("name", name)))
 	defer span.End()
 
@@ -138,7 +138,7 @@ func (a App) Walk(ctx context.Context, name string, walkFn func(model.Item) erro
 	return err
 }
 
-func (a App) Mkdir(ctx context.Context, name string, perm os.FileMode) error {
+func (a Service) Mkdir(ctx context.Context, name string, perm os.FileMode) error {
 	ctx, span := a.tracer.Start(ctx, "mkdir", trace.WithAttributes(attribute.String("name", name)))
 	defer span.End()
 
@@ -150,7 +150,7 @@ func (a App) Mkdir(ctx context.Context, name string, perm os.FileMode) error {
 	return err
 }
 
-func (a App) Rename(ctx context.Context, oldName, newName string) error {
+func (a Service) Rename(ctx context.Context, oldName, newName string) error {
 	ctx, span := a.tracer.Start(ctx, "rename", trace.WithAttributes(attribute.String("oldName", oldName)), trace.WithAttributes(attribute.String("newName", newName)))
 	defer span.End()
 
@@ -162,7 +162,7 @@ func (a App) Rename(ctx context.Context, oldName, newName string) error {
 	return err
 }
 
-func (a App) RemoveAll(ctx context.Context, name string) error {
+func (a Service) RemoveAll(ctx context.Context, name string) error {
 	ctx, span := a.tracer.Start(ctx, "removeAll", trace.WithAttributes(attribute.String("name", name)))
 	defer span.End()
 
@@ -185,6 +185,6 @@ func (tc telemetryCloser) Close() error {
 	return tc.ReadAtSeekCloser.Close()
 }
 
-func (a App) ConvertError(err error) error {
+func (a Service) ConvertError(err error) error {
 	return a.storage.ConvertError(err)
 }
