@@ -15,16 +15,15 @@ import (
 )
 
 type Config struct {
-	directory *string
-
-	endpoint     *string
-	accessKey    *string
-	secretAccess *string
-	bucket       *string
-	region       *string
-	storageClass *string
-	useSSL       *bool
-	partSize     *uint64
+	Directory    string
+	Endpoint     string
+	AccessKey    string
+	SecretAccess string
+	Bucket       string
+	Region       string
+	StorageClass string
+	UseSSL       bool
+	PartSize     uint64
 }
 
 func Flags(fs *flag.FlagSet, prefix string, overrides ...flags.Override) Config {
@@ -35,35 +34,36 @@ func Flags(fs *flag.FlagSet, prefix string, overrides ...flags.Override) Config 
 		}
 	}
 
-	return Config{
-		directory: flags.New("FileSystemDirectory", "Path to directory. Default is dynamic. `/data` on a server and Current Working Directory in a terminal.").Prefix(prefix).DocPrefix("filesystem").String(fs, defaultFS, overrides),
+	var config Config
 
-		endpoint:     flags.New("ObjectEndpoint", "Storage Object endpoint").Prefix(prefix).DocPrefix("s3").String(fs, "", overrides),
-		accessKey:    flags.New("ObjectAccessKey", "Storage Object Access Key").Prefix(prefix).DocPrefix("s3").String(fs, "", overrides),
-		secretAccess: flags.New("ObjectSecretAccess", "Storage Object Secret Access").Prefix(prefix).DocPrefix("s3").String(fs, "", overrides),
-		bucket:       flags.New("ObjectBucket", "Storage Object Bucket").Prefix(prefix).DocPrefix("s3").String(fs, "", overrides),
-		region:       flags.New("ObjectRegion", "Storage Object Region").Prefix(prefix).DocPrefix("s3").String(fs, "", overrides),
-		storageClass: flags.New("ObjectClass", "Storage Object Class").Prefix(prefix).DocPrefix("s3").String(fs, "", overrides),
-		useSSL:       flags.New("ObjectSSL", "Use SSL").Prefix(prefix).DocPrefix("s3").Bool(fs, true, overrides),
-		partSize:     flags.New("PartSize", "PartSize configuration").Prefix(prefix).DocPrefix("s3").Uint64(fs, 5<<20, overrides),
-	}
+	flags.New("FileSystemDirectory", "Path to directory. Default is dynamic. `/data` on a server and Current Working Directory in a terminal.").Prefix(prefix).DocPrefix("filesystem").StringVar(fs, &config.Directory, defaultFS, overrides)
+	flags.New("ObjectEndpoint", "Storage Object endpoint").Prefix(prefix).DocPrefix("s3").StringVar(fs, &config.Endpoint, "", overrides)
+	flags.New("ObjectAccessKey", "Storage Object Access Key").Prefix(prefix).DocPrefix("s3").StringVar(fs, &config.AccessKey, "", overrides)
+	flags.New("ObjectSecretAccess", "Storage Object Secret Access").Prefix(prefix).DocPrefix("s3").StringVar(fs, &config.SecretAccess, "", overrides)
+	flags.New("ObjectBucket", "Storage Object Bucket").Prefix(prefix).DocPrefix("s3").StringVar(fs, &config.Bucket, "", overrides)
+	flags.New("ObjectRegion", "Storage Object Region").Prefix(prefix).DocPrefix("s3").StringVar(fs, &config.Region, "", overrides)
+	flags.New("ObjectClass", "Storage Object Class").Prefix(prefix).DocPrefix("s3").StringVar(fs, &config.StorageClass, "", overrides)
+	flags.New("ObjectSSL", "Use SSL").Prefix(prefix).DocPrefix("s3").BoolVar(fs, &config.UseSSL, true, overrides)
+	flags.New("PartSize", "PartSize configuration").Prefix(prefix).DocPrefix("s3").Uint64Var(fs, &config.PartSize, 5<<20, overrides)
+
+	return config
 }
 
 func New(config Config, tracerProvider trace.TracerProvider) (storage model.Storage, err error) {
-	endpoint := strings.TrimSpace(*config.endpoint)
+	endpoint := strings.TrimSpace(config.Endpoint)
 	if len(endpoint) != 0 {
 		var options []s3.ConfigOption
 
-		if region := strings.TrimSpace(*config.region); len(region) > 0 {
+		if region := strings.TrimSpace(config.Region); len(region) > 0 {
 			options = append(options, s3.WithRegion(region))
 		}
-		if storageClass := strings.TrimSpace(*config.storageClass); len(storageClass) > 0 {
+		if storageClass := strings.TrimSpace(config.StorageClass); len(storageClass) > 0 {
 			options = append(options, s3.WithStorageClass(storageClass))
 		}
 
-		storage, err = s3.New(endpoint, strings.TrimSpace(*config.accessKey), *config.secretAccess, strings.TrimSpace(*config.bucket), *config.useSSL, *config.partSize, options...)
+		storage, err = s3.New(endpoint, strings.TrimSpace(config.AccessKey), config.SecretAccess, strings.TrimSpace(config.Bucket), config.UseSSL, config.PartSize, options...)
 	} else {
-		storage, err = filesystem.New(strings.TrimSpace(*config.directory))
+		storage, err = filesystem.New(strings.TrimSpace(config.Directory))
 	}
 
 	if err != nil {

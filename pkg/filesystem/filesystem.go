@@ -19,7 +19,7 @@ import (
 
 const Name = "filesystem"
 
-var _ model.Storage = App{}
+var _ model.Storage = Service{}
 
 var bufferPool = sync.Pool{
 	New: func() any {
@@ -27,49 +27,49 @@ var bufferPool = sync.Pool{
 	},
 }
 
-type App struct {
+type Service struct {
 	ignoreFn      func(model.Item) bool
 	rootDirectory string
 	rootDirname   string
 }
 
-func New(directory string) (App, error) {
+func New(directory string) (Service, error) {
 	rootDirectory := strings.TrimSuffix(directory, "/")
 
 	if len(rootDirectory) == 0 {
-		return App{}, nil
+		return Service{}, nil
 	}
 
 	info, err := os.Stat(rootDirectory)
 	if err != nil {
-		return App{}, App{}.ConvertError(err)
+		return Service{}, Service{}.ConvertError(err)
 	}
 
 	if !info.IsDir() {
-		return App{}, fmt.Errorf("path %s is not a directory", rootDirectory)
+		return Service{}, fmt.Errorf("path %s is not a directory", rootDirectory)
 	}
 
-	return App{
+	return Service{
 		rootDirectory: rootDirectory,
 		rootDirname:   info.Name(),
 	}, nil
 }
 
-func (a App) Enabled() bool {
+func (a Service) Enabled() bool {
 	return len(a.rootDirectory) != 0
 }
 
-func (a App) Name() string {
+func (a Service) Name() string {
 	return Name
 }
 
-func (a App) WithIgnoreFn(ignoreFn func(model.Item) bool) model.Storage {
+func (a Service) WithIgnoreFn(ignoreFn func(model.Item) bool) model.Storage {
 	a.ignoreFn = ignoreFn
 
 	return a
 }
 
-func (a App) Path(name string) string {
+func (a Service) Path(name string) string {
 	if strings.HasPrefix(name, "/") {
 		return a.rootDirectory + name
 	}
@@ -77,7 +77,7 @@ func (a App) Path(name string) string {
 	return a.rootDirectory + "/" + name
 }
 
-func (a App) Stat(_ context.Context, name string) (model.Item, error) {
+func (a Service) Stat(_ context.Context, name string) (model.Item, error) {
 	if err := model.ValidPath(name); err != nil {
 		return model.Item{}, err
 	}
@@ -92,7 +92,7 @@ func (a App) Stat(_ context.Context, name string) (model.Item, error) {
 	return convertToItem(a.getRelativePath(fullpath), info), nil
 }
 
-func (a App) List(_ context.Context, name string) ([]model.Item, error) {
+func (a Service) List(_ context.Context, name string) ([]model.Item, error) {
 	if err := model.ValidPath(name); err != nil {
 		return nil, err
 	}
@@ -122,7 +122,7 @@ func (a App) List(_ context.Context, name string) ([]model.Item, error) {
 	return items, nil
 }
 
-func (a App) OpenFile(ctx context.Context, name string, flags int, perm os.FileMode) (model.File, error) {
+func (a Service) OpenFile(ctx context.Context, name string, flags int, perm os.FileMode) (model.File, error) {
 	if err := model.ValidPath(name); err != nil {
 		return nil, err
 	}
@@ -130,7 +130,7 @@ func (a App) OpenFile(ctx context.Context, name string, flags int, perm os.FileM
 	return os.OpenFile(a.Path(name), flags, perm)
 }
 
-func (a App) WriteTo(_ context.Context, name string, reader io.Reader, _ model.WriteOpts) error {
+func (a Service) WriteTo(_ context.Context, name string, reader io.Reader, _ model.WriteOpts) error {
 	if err := model.ValidPath(name); err != nil {
 		return err
 	}
@@ -150,7 +150,7 @@ func (a App) WriteTo(_ context.Context, name string, reader io.Reader, _ model.W
 	return errors.Join(err, writer.Close())
 }
 
-func (a App) ReadFrom(_ context.Context, name string) (model.ReadAtSeekCloser, error) {
+func (a Service) ReadFrom(_ context.Context, name string) (model.ReadAtSeekCloser, error) {
 	if err := model.ValidPath(name); err != nil {
 		return nil, err
 	}
@@ -158,7 +158,7 @@ func (a App) ReadFrom(_ context.Context, name string) (model.ReadAtSeekCloser, e
 	return a.getReadableFile(name)
 }
 
-func (a App) UpdateDate(_ context.Context, name string, date time.Time) error {
+func (a Service) UpdateDate(_ context.Context, name string, date time.Time) error {
 	if err := model.ValidPath(name); err != nil {
 		return err
 	}
@@ -166,7 +166,7 @@ func (a App) UpdateDate(_ context.Context, name string, date time.Time) error {
 	return a.ConvertError(os.Chtimes(a.Path(name), date, date))
 }
 
-func (a App) Walk(_ context.Context, name string, walkFn func(model.Item) error) error {
+func (a Service) Walk(_ context.Context, name string, walkFn func(model.Item) error) error {
 	name = a.Path(name)
 
 	return a.ConvertError(filepath.Walk(name, func(path string, info fs.FileInfo, err error) error {
@@ -186,7 +186,7 @@ func (a App) Walk(_ context.Context, name string, walkFn func(model.Item) error)
 	}))
 }
 
-func (a App) Mkdir(_ context.Context, name string, perm os.FileMode) error {
+func (a Service) Mkdir(_ context.Context, name string, perm os.FileMode) error {
 	if err := model.ValidPath(name); err != nil {
 		return err
 	}
@@ -194,7 +194,7 @@ func (a App) Mkdir(_ context.Context, name string, perm os.FileMode) error {
 	return a.ConvertError(os.MkdirAll(a.Path(name), perm))
 }
 
-func (a App) Rename(ctx context.Context, oldName, newName string) error {
+func (a Service) Rename(ctx context.Context, oldName, newName string) error {
 	if err := model.ValidPath(oldName); err != nil {
 		return err
 	}
@@ -217,7 +217,7 @@ func (a App) Rename(ctx context.Context, oldName, newName string) error {
 	return a.ConvertError(os.Rename(a.Path(oldName), a.Path(newName)))
 }
 
-func (a App) RemoveAll(_ context.Context, name string) error {
+func (a Service) RemoveAll(_ context.Context, name string) error {
 	if err := model.ValidPath(name); err != nil {
 		return err
 	}
@@ -225,7 +225,7 @@ func (a App) RemoveAll(_ context.Context, name string) error {
 	return a.ConvertError(os.RemoveAll(a.Path(name)))
 }
 
-func (a App) ConvertError(err error) error {
+func (a Service) ConvertError(err error) error {
 	if err == nil {
 		return nil
 	}

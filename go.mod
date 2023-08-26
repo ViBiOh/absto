@@ -3,7 +3,7 @@ module github.com/ViBiOh/absto
 go 1.21
 
 require (
-	github.com/ViBiOh/flags v1.3.1
+	github.com/ViBiOh/flags v1.4.1
 	github.com/minio/minio-go/v7 v7.0.62
 	github.com/zeebo/xxh3 v1.0.2
 	go.opentelemetry.io/otel v1.16.0
@@ -23,7 +23,6 @@ require (
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/rs/xid v1.5.0 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
-	github.com/stretchr/testify v1.8.4 // indirect
 	golang.org/x/crypto v0.12.0 // indirect
 	golang.org/x/net v0.14.0 // indirect
 	golang.org/x/sys v0.11.0 // indirect

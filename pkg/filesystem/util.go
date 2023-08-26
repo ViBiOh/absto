@@ -10,20 +10,20 @@ import (
 	"github.com/ViBiOh/absto/pkg/model"
 )
 
-func (a App) getRelativePath(name string) string {
+func (a Service) getRelativePath(name string) string {
 	return strings.TrimPrefix(name, a.rootDirectory)
 }
 
-func (a App) getFile(filename string, flags int) (*os.File, error) {
+func (a Service) getFile(filename string, flags int) (*os.File, error) {
 	file, err := os.OpenFile(a.Path(filename), flags, getMode(filename))
 	return file, a.ConvertError(err)
 }
 
-func (a App) getReadableFile(filename string) (model.ReadAtSeekCloser, error) {
+func (a Service) getReadableFile(filename string) (model.ReadAtSeekCloser, error) {
 	return a.getFile(filename, model.ReadFlag)
 }
 
-func (a App) getWritableFile(filename string) (io.WriteCloser, error) {
+func (a Service) getWritableFile(filename string) (io.WriteCloser, error) {
 	return a.getFile(filename, model.WriteFlag)
 }
 

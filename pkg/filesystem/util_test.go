@@ -17,12 +17,12 @@ func TestPath(t *testing.T) {
 	}
 
 	cases := map[string]struct {
-		instance App
+		instance Service
 		args     args
 		want     string
 	}{
 		"simple": {
-			App{
+			Service{
 				rootDirectory: "/home/users",
 			},
 			args{
@@ -47,12 +47,12 @@ func TestGetRelativePath(t *testing.T) {
 	}
 
 	cases := map[string]struct {
-		instance App
+		instance Service
 		args     args
 		want     string
 	}{
 		"simple": {
-			App{
+			Service{
 				rootDirectory: "/home/users",
 			},
 			args{
@@ -177,7 +177,7 @@ func TestConvertError(t *testing.T) {
 	for intention, tc := range cases {
 		t.Run(intention, func(t *testing.T) {
 			failed := false
-			got := App{}.ConvertError(tc.args.err)
+			got := Service{}.ConvertError(tc.args.err)
 
 			if tc.want == nil && got != nil {
 				failed = true
