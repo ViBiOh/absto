@@ -26,7 +26,7 @@ type Config struct {
 	PartSize     uint64
 }
 
-func Flags(fs *flag.FlagSet, prefix string, overrides ...flags.Override) Config {
+func Flags(fs *flag.FlagSet, prefix string, overrides ...flags.Override) *Config {
 	defaultFS := "/data"
 	if term.IsTerminal(int(os.Stdin.Fd())) {
 		if pwd, err := os.Getwd(); err == nil {
@@ -46,10 +46,10 @@ func Flags(fs *flag.FlagSet, prefix string, overrides ...flags.Override) Config 
 	flags.New("ObjectSSL", "Use SSL").Prefix(prefix).DocPrefix("s3").BoolVar(fs, &config.UseSSL, true, overrides)
 	flags.New("PartSize", "PartSize configuration").Prefix(prefix).DocPrefix("s3").Uint64Var(fs, &config.PartSize, 5<<20, overrides)
 
-	return config
+	return &config
 }
 
-func New(config Config, tracerProvider trace.TracerProvider) (storage model.Storage, err error) {
+func New(config *Config, tracerProvider trace.TracerProvider) (storage model.Storage, err error) {
 	endpoint := strings.TrimSpace(config.Endpoint)
 	if len(endpoint) != 0 {
 		var options []s3.ConfigOption
