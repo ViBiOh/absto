@@ -22,7 +22,7 @@ on:
       - main
 
 env:
-  SCRIPTS_NO_INTERACTIVE: 'true'
+  SCRIPTS_NO_INTERACTIVE: "true"
 
 defaults:
   run:
@@ -38,13 +38,13 @@ jobs:
       - name: Setup Golang
         uses: actions/setup-go@v4
         with:
-          go-version: '^1.21'
+          go-version: "^1.21"
       - name: Build
         run: |
           make
           git --no-pager diff -- ':(exclude)go.sum' && git diff --quiet -- ':(exclude)go.sum'
       - name: Codecov
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v3
 
   sonarcloud:
     name: SonarCloud
