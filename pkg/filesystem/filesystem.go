@@ -122,14 +122,6 @@ func (a Service) List(_ context.Context, name string) ([]model.Item, error) {
 	return items, nil
 }
 
-func (a Service) OpenFile(ctx context.Context, name string, flags int, perm os.FileMode) (model.File, error) {
-	if err := model.ValidPath(name); err != nil {
-		return nil, err
-	}
-
-	return os.OpenFile(a.Path(name), flags, perm)
-}
-
 func (a Service) WriteTo(_ context.Context, name string, reader io.Reader, _ model.WriteOpts) error {
 	if err := model.ValidPath(name); err != nil {
 		return err

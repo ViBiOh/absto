@@ -2,7 +2,6 @@ package s3
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -156,10 +155,6 @@ func (a Service) List(ctx context.Context, pathname string) ([]model.Item, error
 	}
 
 	return items, nil
-}
-
-func (a Service) OpenFile(ctx context.Context, name string, _ int, _ os.FileMode) (model.File, error) {
-	return nil, errors.New("not implemented")
 }
 
 func (a Service) WriteTo(ctx context.Context, pathname string, reader io.Reader, opts model.WriteOpts) error {

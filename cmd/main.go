@@ -41,15 +41,6 @@ func main() {
 
 	log.Println("Open file `/test/third.txt`")
 
-	file, err := storage.OpenFile(ctx, "/test/third.txt", model.WriteFlag, model.RegularFilePerm)
-	log.Println(err)
-
-	log.Println("Writing to `/test/third.txt`")
-	log.Println(file.Write([]byte("Writer content")))
-
-	log.Println("Closing `/test/third.txt`")
-	log.Println(file.Close())
-
 	log.Println("Renaming `/test/` to `/renamed/`")
 	log.Println(storage.Rename(ctx, "/test/", "/renamed/"))
 

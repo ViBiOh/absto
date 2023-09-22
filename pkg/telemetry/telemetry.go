@@ -62,20 +62,6 @@ func (a Service) Stat(ctx context.Context, name string) (model.Item, error) {
 	return output, err
 }
 
-func (a Service) OpenFile(ctx context.Context, name string, flag int, perm os.FileMode) (model.File, error) {
-	ctx, span := a.tracer.Start(ctx, "open", trace.WithAttributes(attribute.String("name", name)))
-	defer span.End()
-
-	item, err := a.storage.OpenFile(ctx, name, flag, perm)
-	if err != nil {
-		span.SetStatus(codes.Error, err.Error())
-
-		return nil, err
-	}
-
-	return item, nil
-}
-
 func (a Service) List(ctx context.Context, name string) ([]model.Item, error) {
 	ctx, span := a.tracer.Start(ctx, "list", trace.WithAttributes(attribute.String("name", name)))
 	defer span.End()
