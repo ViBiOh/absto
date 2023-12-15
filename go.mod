@@ -6,7 +6,7 @@ toolchain go1.21.0
 
 require (
 	github.com/ViBiOh/flags v1.4.1
-	github.com/minio/minio-go/v7 v7.0.65
+	github.com/minio/minio-go/v7 v7.0.66
 	github.com/zeebo/xxh3 v1.0.2
 	go.opentelemetry.io/otel v1.21.0
 	go.opentelemetry.io/otel/trace v1.21.0
@@ -15,7 +15,7 @@ require (
 
 require (
 	github.com/dustin/go-humanize v1.0.1 // indirect
-	github.com/google/uuid v1.4.0 // indirect
+	github.com/google/uuid v1.5.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/compress v1.17.4 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.6 // indirect
