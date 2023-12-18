@@ -5,7 +5,7 @@ go 1.21
 toolchain go1.21.0
 
 require (
-	github.com/ViBiOh/flags v1.4.1
+	github.com/ViBiOh/flags v1.5.0
 	github.com/minio/minio-go/v7 v7.0.66
 	github.com/zeebo/xxh3 v1.0.2
 	go.opentelemetry.io/otel v1.21.0
