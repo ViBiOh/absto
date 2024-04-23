@@ -19,9 +19,7 @@ func main() {
 
 	config := absto.Flags(fs, "")
 
-	if err := fs.Parse(os.Args[1:]); err != nil {
-		log.Fatal(err)
-	}
+	_ = fs.Parse(os.Args[1:])
 
 	ctx := context.Background()
 
