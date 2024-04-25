@@ -8,8 +8,8 @@ require (
 	github.com/ViBiOh/flags v1.5.0
 	github.com/minio/minio-go/v7 v7.0.69
 	github.com/zeebo/xxh3 v1.0.2
-	go.opentelemetry.io/otel v1.25.0
-	go.opentelemetry.io/otel/trace v1.25.0
+	go.opentelemetry.io/otel v1.26.0
+	go.opentelemetry.io/otel/trace v1.26.0
 	golang.org/x/term v0.19.0
 )
 
