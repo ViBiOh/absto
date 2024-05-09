@@ -3,6 +3,8 @@ package model
 import "testing"
 
 func TestValidPath(t *testing.T) {
+	t.Parallel()
+
 	type args struct {
 		pathname string
 	}
@@ -45,6 +47,8 @@ func TestValidPath(t *testing.T) {
 
 	for intention, tc := range cases {
 		t.Run(intention, func(t *testing.T) {
+			t.Parallel()
+
 			if got := ValidPath(tc.args.pathname); got != tc.want {
 				t.Errorf("ValidPath() = `%s`, want `%s`", got, tc.want)
 			}

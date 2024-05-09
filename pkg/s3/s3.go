@@ -244,7 +244,7 @@ func (a Service) Rename(ctx context.Context, oldName, newName string) error {
 
 		_, err := a.client.CopyObject(ctx, minio.CopyDestOptions{
 			Bucket: a.bucket,
-			Object: strings.Replace(pathname, oldRoot, newRoot, -1),
+			Object: strings.Replace(pathname, oldRoot, newRoot, 1),
 		}, minio.CopySrcOptions{
 			Bucket: a.bucket,
 			Object: pathname,

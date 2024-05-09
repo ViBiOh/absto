@@ -12,6 +12,8 @@ import (
 )
 
 func TestPath(t *testing.T) {
+	t.Parallel()
+
 	type args struct {
 		name string
 	}
@@ -34,6 +36,7 @@ func TestPath(t *testing.T) {
 
 	for intention, tc := range cases {
 		t.Run(intention, func(t *testing.T) {
+			t.Parallel()
 			if got := tc.instance.Path(tc.args.name); got != tc.want {
 				t.Errorf("Path() = `%s`, want `%s`", got, tc.want)
 			}
@@ -42,6 +45,8 @@ func TestPath(t *testing.T) {
 }
 
 func TestGetRelativePath(t *testing.T) {
+	t.Parallel()
+
 	type args struct {
 		pathname string
 	}
@@ -64,6 +69,8 @@ func TestGetRelativePath(t *testing.T) {
 
 	for intention, tc := range cases {
 		t.Run(intention, func(t *testing.T) {
+			t.Parallel()
+
 			if got := tc.instance.getRelativePath(tc.args.pathname); got != tc.want {
 				t.Errorf("getRelativePath() = `%s`, want `%s`", got, tc.want)
 			}
@@ -72,6 +79,8 @@ func TestGetRelativePath(t *testing.T) {
 }
 
 func TestGetMode(t *testing.T) {
+	t.Parallel()
+
 	type args struct {
 		name string
 	}
@@ -96,6 +105,8 @@ func TestGetMode(t *testing.T) {
 
 	for intention, tc := range cases {
 		t.Run(intention, func(t *testing.T) {
+			t.Parallel()
+
 			if got := getMode(tc.args.name); got != tc.want {
 				t.Errorf("getMode() = %d, want %d", got, tc.want)
 			}
@@ -104,6 +115,8 @@ func TestGetMode(t *testing.T) {
 }
 
 func TestConvertToItem(t *testing.T) {
+	t.Parallel()
+
 	type args struct {
 		pathname string
 		info     fs.FileInfo
@@ -138,6 +151,8 @@ func TestConvertToItem(t *testing.T) {
 
 	for intention, tc := range cases {
 		t.Run(intention, func(t *testing.T) {
+			t.Parallel()
+
 			if got := convertToItem(tc.args.pathname, tc.args.info); got != tc.want {
 				t.Errorf("convertToItem() = %+v, want %+v", got, tc.want)
 			}
@@ -146,6 +161,8 @@ func TestConvertToItem(t *testing.T) {
 }
 
 func TestConvertError(t *testing.T) {
+	t.Parallel()
+
 	type args struct {
 		err error
 	}
@@ -176,6 +193,8 @@ func TestConvertError(t *testing.T) {
 
 	for intention, tc := range cases {
 		t.Run(intention, func(t *testing.T) {
+			t.Parallel()
+
 			failed := false
 			got := Service{}.ConvertError(tc.args.err)
 

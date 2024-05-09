@@ -17,14 +17,14 @@ var (
 )
 
 type Item struct {
-	Date       time.Time   `msg:"date" json:"date"`
-	ID         string      `msg:"id" json:"id"`
-	NameValue  string      `msg:"name" json:"name"`
-	Pathname   string      `msg:"pathname" json:"pathname"`
-	Extension  string      `msg:"extension" json:"extension"`
-	SizeValue  int64       `msg:"size" json:"size"`
-	FileMode   os.FileMode `msg:"fileMode" json:"fileMode"`
-	IsDirValue bool        `msg:"isDir" json:"isDir"`
+	Date       time.Time   `json:"date"      msg:"date"`
+	ID         string      `json:"id"        msg:"id"`
+	NameValue  string      `json:"name"      msg:"name"`
+	Pathname   string      `json:"pathname"  msg:"pathname"`
+	Extension  string      `json:"extension" msg:"extension"`
+	SizeValue  int64       `json:"size"      msg:"size"`
+	FileMode   os.FileMode `json:"fileMode"  msg:"fileMode"`
+	IsDirValue bool        `json:"isDir"     msg:"isDir"`
 }
 
 func (i Item) Name() string {
