@@ -20,15 +20,14 @@ type Service struct {
 }
 
 func New(storage model.Storage, tracerProvider trace.TracerProvider) model.Storage {
-	service := Service{
+	if tracerProvider == nil {
+		return storage
+	}
+
+	return Service{
 		storage: storage,
+		tracer:  tracerProvider.Tracer("absto"),
 	}
-
-	if tracerProvider != nil {
-		service.tracer = tracerProvider.Tracer("absto")
-	}
-
-	return service
 }
 
 func (a Service) Enabled() bool {
