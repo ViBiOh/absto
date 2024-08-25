@@ -222,7 +222,7 @@ func (a Service) ConvertError(err error) error {
 		return nil
 	}
 
-	if os.IsNotExist(err) || strings.HasSuffix(err.Error(), "not a directory") {
+	if errors.Is(err, fs.ErrNotExist) || strings.HasSuffix(err.Error(), "not a directory") {
 		return model.ErrNotExist(err)
 	}
 
