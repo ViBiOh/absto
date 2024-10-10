@@ -22,8 +22,8 @@ require (
 	github.com/klauspost/cpuid/v2 v2.2.8 // indirect
 	github.com/minio/md5-simd v1.1.2 // indirect
 	github.com/rs/xid v1.6.0 // indirect
-	golang.org/x/crypto v0.27.0 // indirect
-	golang.org/x/net v0.29.0 // indirect
+	golang.org/x/crypto v0.28.0 // indirect
+	golang.org/x/net v0.30.0 // indirect
 	golang.org/x/sys v0.26.0 // indirect
-	golang.org/x/text v0.18.0 // indirect
+	golang.org/x/text v0.19.0 // indirect
 )
