@@ -10,7 +10,7 @@ require (
 	github.com/zeebo/xxh3 v1.0.2
 	go.opentelemetry.io/otel v1.34.0
 	go.opentelemetry.io/otel/trace v1.34.0
-	golang.org/x/term v0.28.0
+	golang.org/x/term v0.29.0
 )
 
 require (
@@ -24,6 +24,6 @@ require (
 	github.com/rs/xid v1.6.0 // indirect
 	golang.org/x/crypto v0.32.0 // indirect
 	golang.org/x/net v0.34.0 // indirect
-	golang.org/x/sys v0.29.0 // indirect
+	golang.org/x/sys v0.30.0 // indirect
 	golang.org/x/text v0.21.0 // indirect
 )
