@@ -4,7 +4,7 @@ go 1.24
 
 require (
 	github.com/ViBiOh/flags v1.6.0
-	github.com/minio/minio-go/v7 v7.0.89
+	github.com/minio/minio-go/v7 v7.0.90
 	github.com/zeebo/xxh3 v1.0.2
 	go.opentelemetry.io/otel v1.35.0
 	go.opentelemetry.io/otel/trace v1.35.0
@@ -22,7 +22,7 @@ require (
 	github.com/minio/md5-simd v1.1.2 // indirect
 	github.com/rs/xid v1.6.0 // indirect
 	golang.org/x/crypto v0.36.0 // indirect
-	golang.org/x/net v0.37.0 // indirect
+	golang.org/x/net v0.38.0 // indirect
 	golang.org/x/sys v0.32.0 // indirect
 	golang.org/x/text v0.23.0 // indirect
 )
