@@ -6,12 +6,13 @@ require (
 	github.com/ViBiOh/flags v1.6.1
 	github.com/minio/minio-go/v7 v7.0.97
 	github.com/zeebo/xxh3 v1.0.2
-	go.opentelemetry.io/otel v1.38.0
-	go.opentelemetry.io/otel/trace v1.38.0
+	go.opentelemetry.io/otel v1.39.0
+	go.opentelemetry.io/otel/trace v1.39.0
 	golang.org/x/term v0.37.0
 )
 
 require (
+	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/go-ini/ini v1.67.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
