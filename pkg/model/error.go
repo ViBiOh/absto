@@ -2,6 +2,7 @@ package model
 
 import (
 	"errors"
+	"fmt"
 	"regexp"
 )
 
@@ -13,7 +14,7 @@ var (
 )
 
 func ErrNotExist(err error) error {
-	return errors.Join(err, errNotExists)
+	return fmt.Errorf("%v: %w", err, errNotExists)
 }
 
 func IsNotExist(err error) bool {

@@ -95,6 +95,10 @@ func (a Service) Path(pathname string) string {
 }
 
 func (a Service) Stat(ctx context.Context, pathname string) (model.Item, error) {
+	if err := model.ValidPath(pathname); err != nil {
+		return model.Item{}, err
+	}
+
 	realPathname := a.Path(pathname)
 
 	if realPathname == "" {
@@ -133,6 +137,10 @@ func (a Service) dirExists(ctx context.Context, realPathname string) bool {
 }
 
 func (a Service) List(ctx context.Context, pathname string) ([]model.Item, error) {
+	if err := model.ValidPath(pathname); err != nil {
+		return nil, err
+	}
+
 	realPathname := a.Path(pathname)
 	baseRealPathname := path.Base(realPathname)
 
@@ -158,6 +166,10 @@ func (a Service) List(ctx context.Context, pathname string) ([]model.Item, error
 }
 
 func (a Service) WriteTo(ctx context.Context, pathname string, reader io.Reader, opts model.WriteOpts) error {
+	if err := model.ValidPath(pathname); err != nil {
+		return err
+	}
+
 	if opts.Size == 0 {
 		opts.Size = -1
 	}
@@ -173,6 +185,10 @@ func (a Service) WriteTo(ctx context.Context, pathname string, reader io.Reader,
 }
 
 func (a Service) ReadFrom(ctx context.Context, pathname string) (model.ReadAtSeekCloser, error) {
+	if err := model.ValidPath(pathname); err != nil {
+		return nil, err
+	}
+
 	object, err := a.client.GetObject(ctx, a.bucket, a.Path(pathname), minio.GetObjectOptions{})
 	if err != nil {
 		return nil, a.ConvertError(fmt.Errorf("get object `%s`: %w", pathname, err))
@@ -186,12 +202,20 @@ func (a Service) UpdateDate(_ context.Context, _ string, _ time.Time) error {
 }
 
 func (a Service) Walk(ctx context.Context, pathname string, walkFn func(model.Item) error) error {
+	if err := model.ValidPath(pathname); err != nil {
+		return err
+	}
+
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
 	objectsCh := a.client.ListObjects(ctx, a.bucket, minio.ListObjectsOptions{
 		Prefix:    a.Path(pathname),
 		Recursive: true,
 	})
 
 	var err error
+	var ignoredPrefixes []string
 
 	for object := range objectsCh {
 		if err != nil {
@@ -199,17 +223,44 @@ func (a Service) Walk(ctx context.Context, pathname string, walkFn func(model.It
 		}
 
 		item := convertToItem(object)
-		if a.ignoreFn != nil && a.ignoreFn(item) {
-			continue
+
+		if a.ignoreFn != nil {
+			var ignored bool
+
+			for _, prefix := range ignoredPrefixes {
+				if strings.HasPrefix(item.Pathname, prefix) {
+					ignored = true
+
+					break
+				}
+			}
+
+			if ignored {
+				continue
+			}
+
+			if a.ignoreFn(item) {
+				if item.IsDir() {
+					ignoredPrefixes = append(ignoredPrefixes, item.Pathname)
+				}
+
+				continue
+			}
 		}
 
-		err = walkFn(item)
+		if err = walkFn(item); err != nil {
+			cancel()
+		}
 	}
 
 	return err
 }
 
 func (a Service) Mkdir(ctx context.Context, name string, _ os.FileMode) error {
+	if err := model.ValidPath(name); err != nil {
+		return err
+	}
+
 	parts := strings.Split(model.Dirname(a.Path(name)), "/")
 
 	for index := range parts {
@@ -232,6 +283,14 @@ func (a Service) Mkdir(ctx context.Context, name string, _ os.FileMode) error {
 }
 
 func (a Service) Rename(ctx context.Context, oldName, newName string) error {
+	if err := model.ValidPath(oldName); err != nil {
+		return err
+	}
+
+	if err := model.ValidPath(newName); err != nil {
+		return err
+	}
+
 	oldRoot := a.Path(oldName)
 	newRoot := a.Path(newName)
 
@@ -262,6 +321,10 @@ func (a Service) Rename(ctx context.Context, oldName, newName string) error {
 }
 
 func (a Service) RemoveAll(ctx context.Context, name string) error {
+	if err := model.ValidPath(name); err != nil {
+		return err
+	}
+
 	if err := a.Walk(ctx, name, func(item model.Item) error {
 		if err := a.client.RemoveObject(ctx, a.bucket, a.Path(item.Pathname), minio.RemoveObjectOptions{}); err != nil {
 			return a.ConvertError(fmt.Errorf("delete object `%s`: %w", item.Pathname, err))
@@ -281,7 +344,7 @@ func IsNotExist(err error) bool {
 
 func (a Service) ConvertError(err error) error {
 	if err == nil {
-		return err
+		return nil
 	}
 
 	if IsNotExist(err) {

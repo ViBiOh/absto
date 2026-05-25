@@ -91,12 +91,15 @@ func (a Service) ReadFrom(ctx context.Context, name string) (model.ReadAtSeekClo
 	reader, err := a.storage.ReadFrom(ctx, name)
 	if err != nil {
 		span.SetStatus(codes.Error, err.Error())
+		span.End()
+
+		return nil, err
 	}
 
 	return telemetryCloser{
 		ReadAtSeekCloser: reader,
 		end:              span.End,
-	}, err
+	}, nil
 }
 
 func (a Service) UpdateDate(ctx context.Context, name string, date time.Time) error {

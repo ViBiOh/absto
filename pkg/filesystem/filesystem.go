@@ -1,7 +1,6 @@
 package filesystem
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -23,7 +22,8 @@ var _ model.Storage = Service{}
 
 var bufferPool = sync.Pool{
 	New: func() any {
-		return bytes.NewBuffer(make([]byte, 32*1024))
+		buf := make([]byte, 32*1024)
+		return &buf
 	},
 }
 
@@ -132,10 +132,10 @@ func (a Service) WriteTo(_ context.Context, name string, reader io.Reader, _ mod
 		return err
 	}
 
-	buffer := bufferPool.Get().(*bytes.Buffer)
-	defer bufferPool.Put(buffer)
+	buf := bufferPool.Get().(*[]byte)
+	defer bufferPool.Put(buf)
 
-	if _, err = io.CopyBuffer(writer, reader, buffer.Bytes()); err != nil {
+	if _, err = io.CopyBuffer(writer, reader, *buf); err != nil {
 		err = a.ConvertError(err)
 	}
 
