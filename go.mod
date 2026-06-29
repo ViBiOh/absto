@@ -4,7 +4,7 @@ go 1.26
 
 require (
 	github.com/ViBiOh/flags v1.6.1
-	github.com/minio/minio-go/v7 v7.2.0
+	github.com/minio/minio-go/v7 v7.2.1
 	github.com/zeebo/xxh3 v1.1.0
 	go.opentelemetry.io/otel v1.44.0
 	go.opentelemetry.io/otel/trace v1.44.0
