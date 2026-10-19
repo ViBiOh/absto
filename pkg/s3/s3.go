@@ -112,8 +112,15 @@ func (a Service) Stat(ctx context.Context, pathname string) (model.Item, error) 
 
 	info, err := a.client.StatObject(ctx, a.bucket, realPathname, minio.GetObjectOptions{})
 	if err != nil {
-		if strings.HasSuffix(realPathname, "/") && IsNotExist(err) && a.dirExists(ctx, realPathname) {
-			return convertToItem(minio.ObjectInfo{Key: realPathname}), nil
+		if strings.HasSuffix(realPathname, "/") && IsNotExist(err) {
+			exists, listErr := a.dirExists(ctx, realPathname)
+			if listErr != nil {
+				return model.Item{}, listErr
+			}
+
+			if exists {
+				return convertToItem(minio.ObjectInfo{Key: realPathname}), nil
+			}
 		}
 
 		return model.Item{}, a.ConvertError(fmt.Errorf("stat object `%s`: %w", pathname, err))
@@ -122,18 +129,25 @@ func (a Service) Stat(ctx context.Context, pathname string) (model.Item, error) 
 	return convertToItem(info), nil
 }
 
-func (a Service) dirExists(ctx context.Context, realPathname string) bool {
+func (a Service) dirExists(ctx context.Context, realPathname string) (bool, error) {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
 	objectsCh := a.client.ListObjects(ctx, a.bucket, minio.ListObjectsOptions{
 		Prefix:  realPathname,
 		MaxKeys: 1,
 	})
 
-	var found uint
-	for range objectsCh {
-		found++
+	object, ok := <-objectsCh
+	if !ok {
+		return false, nil
 	}
 
-	return found > 0
+	if object.Err != nil {
+		return false, a.ConvertError(fmt.Errorf("list objects: %w", object.Err))
+	}
+
+	return true, nil
 }
 
 func (a Service) List(ctx context.Context, pathname string) ([]model.Item, error) {
@@ -141,7 +155,14 @@ func (a Service) List(ctx context.Context, pathname string) ([]model.Item, error
 		return nil, err
 	}
 
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
 	realPathname := a.Path(pathname)
+	if realPathname != "" {
+		realPathname = model.Dirname(realPathname)
+	}
+
 	baseRealPathname := path.Base(realPathname)
 
 	objectsCh := a.client.ListObjects(ctx, a.bucket, minio.ListObjectsOptions{
@@ -150,6 +171,10 @@ func (a Service) List(ctx context.Context, pathname string) ([]model.Item, error
 
 	var items []model.Item
 	for object := range objectsCh {
+		if object.Err != nil {
+			return nil, a.ConvertError(fmt.Errorf("list objects: %w", object.Err))
+		}
+
 		item := convertToItem(object)
 		if item.IsDir() && item.Name() == baseRealPathname {
 			continue
@@ -209,8 +234,27 @@ func (a Service) Walk(ctx context.Context, pathname string, walkFn func(model.It
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
+	prefix := a.Path(pathname)
+
+	if prefix != "" && !strings.HasSuffix(prefix, "/") {
+		info, statErr := a.client.StatObject(ctx, a.bucket, prefix, minio.GetObjectOptions{})
+		if statErr == nil {
+			item := convertToItem(info)
+
+			if a.ignoreFn == nil || !a.ignoreFn(item) {
+				if walkErr := walkFn(item); walkErr != nil {
+					return walkErr
+				}
+			}
+		} else if !IsNotExist(statErr) {
+			return a.ConvertError(fmt.Errorf("stat object: %w", statErr))
+		}
+
+		prefix = model.Dirname(prefix)
+	}
+
 	objectsCh := a.client.ListObjects(ctx, a.bucket, minio.ListObjectsOptions{
-		Prefix:    a.Path(pathname),
+		Prefix:    prefix,
 		Recursive: true,
 	})
 
@@ -219,6 +263,13 @@ func (a Service) Walk(ctx context.Context, pathname string, walkFn func(model.It
 
 	for object := range objectsCh {
 		if err != nil {
+			continue
+		}
+
+		if object.Err != nil {
+			err = a.ConvertError(fmt.Errorf("list objects: %w", object.Err))
+			cancel()
+
 			continue
 		}
 
@@ -292,7 +343,8 @@ func (a Service) Rename(ctx context.Context, oldName, newName string) error {
 	}
 
 	oldRoot := a.Path(oldName)
-	newRoot := a.Path(newName)
+	oldPrefix := strings.TrimSuffix(oldRoot, "/")
+	newPrefix := strings.TrimSuffix(a.Path(newName), "/")
 
 	return a.Walk(ctx, oldRoot, func(item model.Item) error {
 		pathname := a.Path(item.Pathname)
@@ -303,7 +355,7 @@ func (a Service) Rename(ctx context.Context, oldName, newName string) error {
 
 		_, err := a.client.CopyObject(ctx, minio.CopyDestOptions{
 			Bucket: a.bucket,
-			Object: strings.Replace(pathname, oldRoot, newRoot, 1),
+			Object: strings.Replace(pathname, oldPrefix, newPrefix, 1),
 		}, minio.CopySrcOptions{
 			Bucket: a.bucket,
 			Object: pathname,

@@ -44,40 +44,6 @@ func TestPath(t *testing.T) {
 	}
 }
 
-func TestGetRelativePath(t *testing.T) {
-	t.Parallel()
-
-	type args struct {
-		pathname string
-	}
-
-	cases := map[string]struct {
-		instance Service
-		args     args
-		want     string
-	}{
-		"simple": {
-			Service{
-				rootDirectory: "/home/users",
-			},
-			args{
-				pathname: "/home/users/test",
-			},
-			"/test",
-		},
-	}
-
-	for intention, tc := range cases {
-		t.Run(intention, func(t *testing.T) {
-			t.Parallel()
-
-			if got := tc.instance.getRelativePath(tc.args.pathname); got != tc.want {
-				t.Errorf("getRelativePath() = `%s`, want `%s`", got, tc.want)
-			}
-		})
-	}
-}
-
 func TestGetMode(t *testing.T) {
 	t.Parallel()
 

@@ -8,7 +8,6 @@ import (
 	"io/fs"
 	"os"
 	"path"
-	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -29,6 +28,7 @@ var bufferPool = sync.Pool{
 
 type Service struct {
 	ignoreFn      func(model.Item) bool
+	root          *os.Root
 	rootDirectory string
 	rootDirname   string
 }
@@ -49,7 +49,13 @@ func New(directory string) (Service, error) {
 		return Service{}, fmt.Errorf("path %s is not a directory", rootDirectory)
 	}
 
+	root, err := os.OpenRoot(rootDirectory)
+	if err != nil {
+		return Service{}, Service{}.ConvertError(err)
+	}
+
 	return Service{
+		root:          root,
 		rootDirectory: rootDirectory,
 		rootDirname:   info.Name(),
 	}, nil
@@ -82,14 +88,12 @@ func (a Service) Stat(_ context.Context, name string) (model.Item, error) {
 		return model.Item{}, err
 	}
 
-	fullpath := a.Path(name)
-
-	info, err := os.Stat(fullpath)
+	info, err := a.root.Stat(a.relative(name))
 	if err != nil {
 		return model.Item{}, a.ConvertError(err)
 	}
 
-	return convertToItem(a.getRelativePath(fullpath), info), nil
+	return a.newItem(a.pathname(name), info), nil
 }
 
 func (a Service) List(_ context.Context, name string) ([]model.Item, error) {
@@ -97,9 +101,7 @@ func (a Service) List(_ context.Context, name string) ([]model.Item, error) {
 		return nil, err
 	}
 
-	fullpath := a.Path(name)
-
-	files, err := os.ReadDir(fullpath)
+	files, err := fs.ReadDir(a.root.FS(), a.relative(name))
 	if err != nil {
 		return nil, a.ConvertError(err)
 	}
@@ -111,7 +113,7 @@ func (a Service) List(_ context.Context, name string) ([]model.Item, error) {
 			return nil, fmt.Errorf("read file metadata: %w", err)
 		}
 
-		item := convertToItem(a.getRelativePath(path.Join(fullpath, file.Name())), fileInfo)
+		item := a.newItem(path.Join("/", name, file.Name()), fileInfo)
 		if a.ignoreFn != nil && a.ignoreFn(item) {
 			continue
 		}
@@ -155,22 +157,37 @@ func (a Service) UpdateDate(_ context.Context, name string, date time.Time) erro
 		return err
 	}
 
-	return a.ConvertError(os.Chtimes(a.Path(name), date, date))
+	return a.ConvertError(a.root.Chtimes(a.relative(name), date, date))
 }
 
 func (a Service) Walk(_ context.Context, name string, walkFn func(model.Item) error) error {
-	name = a.Path(name)
+	if err := model.ValidPath(name); err != nil {
+		return err
+	}
 
-	return a.ConvertError(filepath.Walk(name, func(path string, info fs.FileInfo, err error) error {
+	start := a.relative(name)
+
+	return a.ConvertError(fs.WalkDir(a.root.FS(), start, func(current string, entry fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
 
-		item := convertToItem(a.getRelativePath(path), info)
+		info, err := entry.Info()
+		if err != nil {
+			return err
+		}
+
+		pathname := "/" + current
+		if current == start {
+			pathname = a.pathname(name)
+		}
+
+		item := a.newItem(pathname, info)
 		if a.ignoreFn != nil && a.ignoreFn(item) {
 			if item.IsDir() {
-				return filepath.SkipDir
+				return fs.SkipDir
 			}
+
 			return nil
 		}
 
@@ -183,7 +200,7 @@ func (a Service) Mkdir(_ context.Context, name string, perm os.FileMode) error {
 		return err
 	}
 
-	return a.ConvertError(os.MkdirAll(a.Path(name), perm))
+	return a.ConvertError(a.root.MkdirAll(a.relative(name), perm))
 }
 
 func (a Service) Rename(ctx context.Context, oldName, newName string) error {
@@ -206,7 +223,7 @@ func (a Service) Rename(ctx context.Context, oldName, newName string) error {
 		}
 	}
 
-	return a.ConvertError(os.Rename(a.Path(oldName), a.Path(newName)))
+	return a.ConvertError(a.root.Rename(a.relative(oldName), a.relative(newName)))
 }
 
 func (a Service) RemoveAll(_ context.Context, name string) error {
@@ -214,7 +231,7 @@ func (a Service) RemoveAll(_ context.Context, name string) error {
 		return err
 	}
 
-	return a.ConvertError(os.RemoveAll(a.Path(name)))
+	return a.ConvertError(a.root.RemoveAll(a.relative(name)))
 }
 
 func (a Service) ConvertError(err error) error {
