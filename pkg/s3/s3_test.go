@@ -1,8 +1,13 @@
 package s3
 
 import (
+	"bufio"
+	"bytes"
 	"context"
 	"encoding/xml"
+	"errors"
+	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -12,6 +17,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/ViBiOh/absto/pkg/model"
 )
@@ -22,9 +28,11 @@ const (
 )
 
 type fakeServer struct {
-	objects map[string]string
-	mutex   sync.Mutex
-	listErr bool
+	objects  map[string]string
+	uploads  map[string]map[int]string
+	requests []string
+	mutex    sync.Mutex
+	listErr  bool
 }
 
 type listEntry struct {
@@ -57,19 +65,156 @@ func (fake *fakeServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	fake.requests = append(fake.requests, r.Method+" "+r.URL.Path)
+
+	query := r.URL.Query()
+	uploadID := query.Get("uploadId")
+
 	switch {
 	case key == "" && r.Method == http.MethodGet:
 		fake.list(w, r)
+	case r.Method == http.MethodGet:
+		fake.get(w, r, key)
 	case r.Method == http.MethodHead:
 		fake.head(w, key)
+	case r.Method == http.MethodDelete && uploadID != "":
+		delete(fake.uploads, uploadID)
+		w.WriteHeader(http.StatusNoContent)
 	case r.Method == http.MethodDelete:
 		delete(fake.objects, key)
 		w.WriteHeader(http.StatusNoContent)
+	case r.Method == http.MethodPost && query.Has("uploads"):
+		fake.initiateUpload(w, key)
+	case r.Method == http.MethodPost && uploadID != "":
+		fake.completeUpload(w, r, key, uploadID)
+	case r.Method == http.MethodPut && uploadID != "":
+		fake.putPart(w, r, uploadID, query.Get("partNumber"))
 	case r.Method == http.MethodPut:
 		fake.put(w, r, key)
 	default:
 		http.Error(w, "not implemented", http.StatusNotImplemented)
 	}
+}
+
+func (fake *fakeServer) initiateUpload(w http.ResponseWriter, key string) {
+	uploadID := "upload-" + strconv.Itoa(len(fake.uploads)+1)
+	fake.uploads[uploadID] = make(map[int]string)
+
+	w.Header().Set("Content-Type", "application/xml")
+	_, _ = fmt.Fprintf(w, `<InitiateMultipartUploadResult><Bucket>%s</Bucket><Key>%s</Key><UploadId>%s</UploadId></InitiateMultipartUploadResult>`, testBucket, key, uploadID)
+}
+
+func (fake *fakeServer) putPart(w http.ResponseWriter, r *http.Request, uploadID, partNumber string) {
+	parts, ok := fake.uploads[uploadID]
+	if !ok {
+		http.Error(w, "unknown upload", http.StatusNotFound)
+
+		return
+	}
+
+	number, err := strconv.Atoi(partNumber)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+
+		return
+	}
+
+	content, err := decodeBody(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+
+		return
+	}
+
+	parts[number] = string(content)
+
+	w.Header().Set("ETag", `"part-`+partNumber+`"`)
+	w.WriteHeader(http.StatusOK)
+}
+
+func (fake *fakeServer) completeUpload(w http.ResponseWriter, r *http.Request, key, uploadID string) {
+	parts, ok := fake.uploads[uploadID]
+	if !ok {
+		http.Error(w, "unknown upload", http.StatusNotFound)
+
+		return
+	}
+
+	numbers := make([]int, 0, len(parts))
+	for number := range parts {
+		numbers = append(numbers, number)
+	}
+
+	sort.Ints(numbers)
+
+	var content strings.Builder
+	for _, number := range numbers {
+		content.WriteString(parts[number])
+	}
+
+	fake.objects[key] = content.String()
+	delete(fake.uploads, uploadID)
+
+	w.Header().Set("Content-Type", "application/xml")
+	_, _ = fmt.Fprintf(w, `<CompleteMultipartUploadResult><Bucket>%s</Bucket><Key>%s</Key><ETag>"abc"</ETag></CompleteMultipartUploadResult>`, testBucket, key)
+}
+
+func decodeBody(r *http.Request) ([]byte, error) {
+	data, err := io.ReadAll(r.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	if !strings.HasPrefix(r.Header.Get("X-Amz-Content-Sha256"), "STREAMING-") {
+		return data, nil
+	}
+
+	var output []byte
+
+	reader := bufio.NewReader(bytes.NewReader(data))
+
+	for {
+		line, err := reader.ReadString('\n')
+		if err != nil {
+			return nil, err
+		}
+
+		sizeText, _, _ := strings.Cut(strings.TrimSpace(line), ";")
+
+		size, err := strconv.ParseInt(sizeText, 16, 64)
+		if err != nil {
+			return nil, err
+		}
+
+		if size == 0 {
+			return output, nil
+		}
+
+		chunk := make([]byte, size)
+		if _, err = io.ReadFull(reader, chunk); err != nil {
+			return nil, err
+		}
+
+		output = append(output, chunk...)
+
+		if _, err = reader.Discard(2); err != nil {
+			return nil, err
+		}
+	}
+}
+
+func (fake *fakeServer) get(w http.ResponseWriter, r *http.Request, key string) {
+	content, ok := fake.objects[key]
+	if !ok {
+		w.Header().Set("Content-Type", "application/xml")
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = w.Write([]byte(`<Error><Code>NoSuchKey</Code><Message>The specified key does not exist.</Message></Error>`))
+
+		return
+	}
+
+	w.Header().Set("ETag", `"abc"`)
+	http.ServeContent(w, r, key, time.Date(2024, time.January, 1, 0, 0, 0, 0, time.UTC), strings.NewReader(content))
 }
 
 func (fake *fakeServer) head(w http.ResponseWriter, key string) {
@@ -89,7 +234,16 @@ func (fake *fakeServer) head(w http.ResponseWriter, key string) {
 func (fake *fakeServer) put(w http.ResponseWriter, r *http.Request, key string) {
 	source := r.Header.Get("X-Amz-Copy-Source")
 	if source == "" {
-		fake.objects[key] = ""
+		content, err := decodeBody(r)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+
+			return
+		}
+
+		fake.objects[key] = string(content)
+
+		w.Header().Set("ETag", `"abc"`)
 		w.WriteHeader(http.StatusOK)
 
 		return
@@ -173,12 +327,12 @@ func (fake *fakeServer) list(w http.ResponseWriter, r *http.Request) {
 
 	var output strings.Builder
 
-	output.WriteString(`<ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/"><Name>` + testBucket + `</Name>`)
-	output.WriteString(`<KeyCount>` + strconv.Itoa(end-start) + `</KeyCount><MaxKeys>` + strconv.Itoa(maxKeys) + `</MaxKeys>`)
-	output.WriteString(`<IsTruncated>` + strconv.FormatBool(truncated) + `</IsTruncated>`)
+	fmt.Fprintf(&output, `<ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/"><Name>%s</Name>`, testBucket)
+	fmt.Fprintf(&output, `<KeyCount>%d</KeyCount><MaxKeys>%d</MaxKeys>`, end-start, maxKeys)
+	fmt.Fprintf(&output, `<IsTruncated>%t</IsTruncated>`, truncated)
 
 	if truncated {
-		output.WriteString(`<NextContinuationToken>` + strconv.Itoa(end) + `</NextContinuationToken>`)
+		fmt.Fprintf(&output, `<NextContinuationToken>%d</NextContinuationToken>`, end)
 	}
 
 	for _, entry := range entries[start:end] {
@@ -187,12 +341,12 @@ func (fake *fakeServer) list(w http.ResponseWriter, r *http.Request) {
 		_ = xml.EscapeText(&escaped, []byte(entry.key))
 
 		if entry.isPrefix {
-			output.WriteString(`<CommonPrefixes><Prefix>` + escaped.String() + `</Prefix></CommonPrefixes>`)
+			fmt.Fprintf(&output, `<CommonPrefixes><Prefix>%s</Prefix></CommonPrefixes>`, escaped.String())
 
 			continue
 		}
 
-		output.WriteString(`<Contents><Key>` + escaped.String() + `</Key><LastModified>` + testDate + `</LastModified><ETag>"abc"</ETag><Size>` + strconv.Itoa(len(fake.objects[entry.key])) + `</Size></Contents>`)
+		fmt.Fprintf(&output, `<Contents><Key>%s</Key><LastModified>%s</LastModified><ETag>"abc"</ETag><Size>%d</Size></Contents>`, escaped.String(), testDate, len(fake.objects[entry.key]))
 	}
 
 	output.WriteString(`</ListBucketResult>`)
@@ -205,6 +359,7 @@ func newTestService(t *testing.T, listErr bool, keys ...string) (Service, *fakeS
 
 	fake := &fakeServer{
 		objects: make(map[string]string, len(keys)),
+		uploads: make(map[string]map[int]string),
 		listErr: listErr,
 	}
 
@@ -242,7 +397,7 @@ func TestList(t *testing.T) {
 		},
 		"root": {
 			"/",
-			[]string{"/photo.jpg", "/photo/", "/photos/"},
+			[]string{"/photo", "/photo.jpg", "/photos"},
 		},
 	}
 
@@ -337,22 +492,27 @@ func TestWalk(t *testing.T) {
 	cases := map[string]struct {
 		pathname string
 		want     []string
+		wantErr  bool
 	}{
 		"directory without slash": {
 			"/photo",
-			[]string{"/photo/", "/photo/a.jpg"},
+			[]string{"/photo", "/photo/a.jpg"},
+			false,
 		},
 		"directory with slash": {
 			"/photo/",
-			[]string{"/photo/", "/photo/a.jpg"},
+			[]string{"/photo", "/photo/a.jpg"},
+			false,
 		},
 		"file": {
 			"/photo.jpg",
 			[]string{"/photo.jpg"},
+			false,
 		},
 		"missing": {
 			"/phot",
 			nil,
+			true,
 		},
 	}
 
@@ -369,6 +529,14 @@ func TestWalk(t *testing.T) {
 
 				return nil
 			})
+			if tc.wantErr {
+				if !model.IsNotExist(err) {
+					t.Fatalf("Walk() error = %v, want not exist", err)
+				}
+
+				return
+			}
+
 			if err != nil {
 				t.Fatalf("Walk() unexpected error: %s", err)
 			}
@@ -468,5 +636,51 @@ func TestRename(t *testing.T) {
 				t.Errorf("Rename() produced %v, want %v", got, want)
 			}
 		})
+	}
+}
+
+func TestReadFromRequests(t *testing.T) {
+	t.Parallel()
+
+	service, fake := newTestService(t, false, "dir/file.txt")
+
+	reader, err := service.ReadFrom(context.Background(), "/dir/file.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	content, err := io.ReadAll(reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err = reader.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	if string(content) != "content" {
+		t.Errorf("content = %q, want `content`", content)
+	}
+
+	fake.mutex.Lock()
+	defer fake.mutex.Unlock()
+
+	if len(fake.requests) > 2 {
+		t.Errorf("ReadFrom() issued %d requests, want at most 2: %v", len(fake.requests), fake.requests)
+	}
+}
+
+func TestUpdateDate(t *testing.T) {
+	t.Parallel()
+
+	service, _ := newTestService(t, false, "file.txt")
+
+	err := service.UpdateDate(context.Background(), "/file.txt", time.Now())
+	if !errors.Is(err, model.ErrUnsupported) {
+		t.Errorf("UpdateDate() error = %v, want %v", err, model.ErrUnsupported)
+	}
+
+	if !errors.Is(err, errors.ErrUnsupported) {
+		t.Errorf("UpdateDate() error = %v, want errors.ErrUnsupported", err)
 	}
 }

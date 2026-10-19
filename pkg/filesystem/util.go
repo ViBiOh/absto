@@ -1,10 +1,13 @@
 package filesystem
 
 import (
+	"errors"
+	"fmt"
 	"io"
 	"io/fs"
 	"os"
 	"path"
+	"slices"
 	"strings"
 	"syscall"
 
@@ -25,11 +28,51 @@ func (a Service) relative(name string) string {
 }
 
 func (a Service) pathname(name string) string {
-	if strings.HasPrefix(name, "/") {
-		return name
+	return path.Clean("/" + name)
+}
+
+func (a Service) readDir(relative string) ([]fs.FileInfo, error) {
+	entries, err := fs.ReadDir(a.root.FS(), relative)
+	if err != nil {
+		return nil, err
 	}
 
-	return "/" + name
+	infos := make([]fs.FileInfo, 0, len(entries))
+
+	for _, entry := range entries {
+		info, err := entry.Info()
+		if errors.Is(err, fs.ErrNotExist) {
+			continue
+		}
+
+		if err != nil {
+			return nil, fmt.Errorf("read file metadata: %w", err)
+		}
+
+		infos = append(infos, info)
+	}
+
+	slices.SortFunc(infos, func(left, right fs.FileInfo) int {
+		return strings.Compare(sortKey(left), sortKey(right))
+	})
+
+	return infos, nil
+}
+
+func (a Service) requireDirectory(name string, info fs.FileInfo) error {
+	if strings.HasSuffix(name, "/") && !info.IsDir() {
+		return a.ConvertError(&fs.PathError{Op: "stat", Path: name, Err: syscall.ENOTDIR})
+	}
+
+	return nil
+}
+
+func sortKey(info fs.FileInfo) string {
+	if info.IsDir() {
+		return info.Name() + "/"
+	}
+
+	return info.Name()
 }
 
 func (a Service) newItem(pathname string, info fs.FileInfo) model.Item {

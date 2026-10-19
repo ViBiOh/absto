@@ -7,7 +7,7 @@ endif
 
 PACKAGES ?= ./...
 
-MAIN_SOURCE = cmd/main.go
+MAIN_SOURCE = ./cmd/main.go
 MAIN_RUNNER = go run $(MAIN_SOURCE)
 ifeq ($(DEBUG), true)
 	MAIN_RUNNER = dlv debug $(MAIN_SOURCE) --

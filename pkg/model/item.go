@@ -3,7 +3,7 @@ package model
 import (
 	"io/fs"
 	"os"
-	"path/filepath"
+	"path"
 	"strconv"
 	"strings"
 	"time"
@@ -68,10 +68,10 @@ func (i Item) IsZero() bool {
 
 func (i Item) Dir() string {
 	if i.IsDirValue {
-		return i.Pathname
+		return Dirname(i.Pathname)
 	}
 
-	return Dirname(filepath.Dir(i.Pathname))
+	return Dirname(path.Dir(i.Pathname))
 }
 
 func ID(value string) string {

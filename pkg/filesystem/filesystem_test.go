@@ -287,8 +287,8 @@ func TestItems(t *testing.T) {
 				t.Fatalf("Stat() unexpected error: %s", err)
 			}
 
-			if dirItem.Pathname != "/sub/" || dirItem.Name() != "sub" {
-				t.Errorf("Stat(/sub/) = %+v, want pathname `/sub/`", dirItem)
+			if dirItem.Pathname != "/sub" || dirItem.Name() != "sub" {
+				t.Errorf("Stat(/sub/) = %+v, want pathname `/sub`", dirItem)
 			}
 
 			items, err := service.List(ctx, "/sub")
