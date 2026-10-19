@@ -93,6 +93,10 @@ func (a Service) Stat(_ context.Context, name string) (model.Item, error) {
 		return model.Item{}, a.ConvertError(err)
 	}
 
+	if err = a.requireDirectory(name, info); err != nil {
+		return model.Item{}, err
+	}
+
 	return a.newItem(a.pathname(name), info), nil
 }
 
@@ -101,19 +105,15 @@ func (a Service) List(_ context.Context, name string) ([]model.Item, error) {
 		return nil, err
 	}
 
-	files, err := fs.ReadDir(a.root.FS(), a.relative(name))
+	infos, err := a.readDir(a.relative(name))
 	if err != nil {
 		return nil, a.ConvertError(err)
 	}
 
-	var items []model.Item
-	for _, file := range files {
-		fileInfo, err := file.Info()
-		if err != nil {
-			return nil, fmt.Errorf("read file metadata: %w", err)
-		}
+	items := make([]model.Item, 0, len(infos))
 
-		item := a.newItem(path.Join("/", name, file.Name()), fileInfo)
+	for _, info := range infos {
+		item := a.newItem(path.Join("/", name, info.Name()), info)
 		if a.ignoreFn != nil && a.ignoreFn(item) {
 			continue
 		}
@@ -130,6 +130,14 @@ func (a Service) WriteTo(_ context.Context, name string, reader io.Reader, _ mod
 	}
 
 	writer, err := a.getWritableFile(name)
+	if model.IsNotExist(err) {
+		if err = a.root.MkdirAll(path.Dir(a.relative(name)), model.DirectoryPerm); err != nil {
+			return a.ConvertError(err)
+		}
+
+		writer, err = a.getWritableFile(name)
+	}
+
 	if err != nil {
 		return err
 	}
@@ -166,34 +174,46 @@ func (a Service) Walk(_ context.Context, name string, walkFn func(model.Item) er
 		return err
 	}
 
-	start := a.relative(name)
+	relative := a.relative(name)
 
-	return a.ConvertError(fs.WalkDir(a.root.FS(), start, func(current string, entry fs.DirEntry, err error) error {
-		if err != nil {
+	info, err := a.root.Stat(relative)
+	if err != nil {
+		return a.ConvertError(err)
+	}
+
+	if err = a.requireDirectory(name, info); err != nil {
+		return err
+	}
+
+	return a.ConvertError(a.walk(relative, a.pathname(name), info, walkFn))
+}
+
+func (a Service) walk(relative, pathname string, info fs.FileInfo, walkFn func(model.Item) error) error {
+	item := a.newItem(pathname, info)
+	if a.ignoreFn != nil && a.ignoreFn(item) {
+		return nil
+	}
+
+	if err := walkFn(item); err != nil {
+		return err
+	}
+
+	if !info.IsDir() {
+		return nil
+	}
+
+	children, err := a.readDir(relative)
+	if err != nil {
+		return err
+	}
+
+	for _, child := range children {
+		if err = a.walk(path.Join(relative, child.Name()), path.Join(pathname, child.Name()), child, walkFn); err != nil {
 			return err
 		}
+	}
 
-		info, err := entry.Info()
-		if err != nil {
-			return err
-		}
-
-		pathname := "/" + current
-		if current == start {
-			pathname = a.pathname(name)
-		}
-
-		item := a.newItem(pathname, info)
-		if a.ignoreFn != nil && a.ignoreFn(item) {
-			if item.IsDir() {
-				return fs.SkipDir
-			}
-
-			return nil
-		}
-
-		return walkFn(item)
-	}))
+	return nil
 }
 
 func (a Service) Mkdir(_ context.Context, name string, perm os.FileMode) error {
@@ -213,6 +233,14 @@ func (a Service) Rename(ctx context.Context, oldName, newName string) error {
 		return err
 	}
 
+	if _, err := a.Stat(ctx, oldName); err != nil {
+		return err
+	}
+
+	if a.relative(oldName) == a.relative(newName) {
+		return nil
+	}
+
 	newDirPath := path.Dir(strings.TrimSuffix(newName, "/"))
 	if _, err := a.Stat(ctx, newDirPath); err != nil {
 		if model.IsNotExist(err) {
@@ -230,6 +258,12 @@ func (a Service) Rename(ctx context.Context, oldName, newName string) error {
 func (a Service) RemoveAll(_ context.Context, name string) error {
 	if err := model.ValidPath(name); err != nil {
 		return err
+	}
+
+	if strings.HasSuffix(name, "/") {
+		if info, err := a.root.Stat(a.relative(name)); err == nil && !info.IsDir() {
+			return nil
+		}
 	}
 
 	return a.ConvertError(a.root.RemoveAll(a.relative(name)))

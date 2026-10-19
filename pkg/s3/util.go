@@ -10,7 +10,7 @@ import (
 
 func convertToItem(info minio.ObjectInfo) model.Item {
 	name := path.Base(info.Key)
-	pathname := "/" + info.Key
+	pathname := "/" + strings.TrimSuffix(info.Key, "/")
 
 	item := model.Item{
 		ID:         model.ID(pathname),
@@ -29,4 +29,14 @@ func convertToItem(info minio.ObjectInfo) model.Item {
 	}
 
 	return item
+}
+
+func rootItem() model.Item {
+	return model.Item{
+		ID:         model.ID("/"),
+		NameValue:  "/",
+		Pathname:   "/",
+		IsDirValue: true,
+		FileMode:   model.DirectoryPerm,
+	}
 }
