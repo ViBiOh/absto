@@ -11,6 +11,10 @@ import (
 	"github.com/ViBiOh/absto/pkg/model"
 )
 
+type writerOnly struct {
+	io.Writer
+}
+
 func (a Service) relative(name string) string {
 	relative := strings.TrimPrefix(path.Clean("/"+name), "/")
 	if relative == "" {

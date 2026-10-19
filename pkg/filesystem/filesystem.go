@@ -137,7 +137,8 @@ func (a Service) WriteTo(_ context.Context, name string, reader io.Reader, _ mod
 	buf := bufferPool.Get().(*[]byte)
 	defer bufferPool.Put(buf)
 
-	if _, err = io.CopyBuffer(writer, reader, *buf); err != nil {
+	// *os.File implements io.ReaderFrom, which makes io.CopyBuffer ignore buf and allocate its own.
+	if _, err = io.CopyBuffer(writerOnly{Writer: writer}, reader, *buf); err != nil {
 		err = a.ConvertError(err)
 	}
 

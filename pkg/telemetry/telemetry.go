@@ -3,6 +3,7 @@ package telemetry
 import (
 	"context"
 	"io"
+	"io/fs"
 	"os"
 	"time"
 
@@ -54,9 +55,7 @@ func (a Service) Stat(ctx context.Context, name string) (model.Item, error) {
 	defer span.End()
 
 	output, err := a.storage.Stat(ctx, name)
-	if err != nil {
-		span.SetStatus(codes.Error, err.Error())
-	}
+	recordError(span, err)
 
 	return output, err
 }
@@ -66,9 +65,7 @@ func (a Service) List(ctx context.Context, name string) ([]model.Item, error) {
 	defer span.End()
 
 	output, err := a.storage.List(ctx, name)
-	if err != nil {
-		span.SetStatus(codes.Error, err.Error())
-	}
+	recordError(span, err)
 
 	return output, err
 }
@@ -78,9 +75,7 @@ func (a Service) WriteTo(ctx context.Context, name string, reader io.Reader, opt
 	defer span.End()
 
 	err := a.storage.WriteTo(ctx, name, reader, opts)
-	if err != nil {
-		span.SetStatus(codes.Error, err.Error())
-	}
+	recordError(span, err)
 
 	return err
 }
@@ -90,16 +85,22 @@ func (a Service) ReadFrom(ctx context.Context, name string) (model.ReadAtSeekClo
 
 	reader, err := a.storage.ReadFrom(ctx, name)
 	if err != nil {
-		span.SetStatus(codes.Error, err.Error())
+		recordError(span, err)
 		span.End()
 
 		return nil, err
 	}
 
-	return telemetryCloser{
+	closer := telemetryCloser{
 		ReadAtSeekCloser: reader,
-		end:              span.End,
-	}, nil
+		span:             span,
+	}
+
+	if file, ok := reader.(statter); ok {
+		return telemetryFile{telemetryCloser: closer, statter: file}, nil
+	}
+
+	return closer, nil
 }
 
 func (a Service) UpdateDate(ctx context.Context, name string, date time.Time) error {
@@ -107,9 +108,7 @@ func (a Service) UpdateDate(ctx context.Context, name string, date time.Time) er
 	defer span.End()
 
 	err := a.storage.UpdateDate(ctx, name, date)
-	if err != nil {
-		span.SetStatus(codes.Error, err.Error())
-	}
+	recordError(span, err)
 
 	return err
 }
@@ -119,9 +118,7 @@ func (a Service) Walk(ctx context.Context, name string, walkFn func(model.Item) 
 	defer span.End()
 
 	err := a.storage.Walk(ctx, name, walkFn)
-	if err != nil {
-		span.SetStatus(codes.Error, err.Error())
-	}
+	recordError(span, err)
 
 	return err
 }
@@ -131,9 +128,7 @@ func (a Service) Mkdir(ctx context.Context, name string, perm os.FileMode) error
 	defer span.End()
 
 	err := a.storage.Mkdir(ctx, name, perm)
-	if err != nil {
-		span.SetStatus(codes.Error, err.Error())
-	}
+	recordError(span, err)
 
 	return err
 }
@@ -143,9 +138,7 @@ func (a Service) Rename(ctx context.Context, oldName, newName string) error {
 	defer span.End()
 
 	err := a.storage.Rename(ctx, oldName, newName)
-	if err != nil {
-		span.SetStatus(codes.Error, err.Error())
-	}
+	recordError(span, err)
 
 	return err
 }
@@ -155,22 +148,41 @@ func (a Service) RemoveAll(ctx context.Context, name string) error {
 	defer span.End()
 
 	err := a.storage.RemoveAll(ctx, name)
-	if err != nil {
-		span.SetStatus(codes.Error, err.Error())
-	}
+	recordError(span, err)
 
 	return err
 }
 
-type telemetryCloser struct {
-	model.ReadAtSeekCloser
-	end func(options ...trace.SpanEndOption)
+type statter interface {
+	Stat() (fs.FileInfo, error)
 }
 
-func (tc telemetryCloser) Close() error {
-	tc.end()
+type telemetryCloser struct {
+	model.ReadAtSeekCloser
+	span trace.Span
+}
 
-	return tc.ReadAtSeekCloser.Close()
+func (closer telemetryCloser) Close() error {
+	err := closer.ReadAtSeekCloser.Close()
+
+	recordError(closer.span, err)
+	closer.span.End()
+
+	return err
+}
+
+type telemetryFile struct {
+	statter
+	telemetryCloser
+}
+
+func recordError(span trace.Span, err error) {
+	if err == nil || model.IsNotExist(err) {
+		return
+	}
+
+	span.RecordError(err)
+	span.SetStatus(codes.Error, err.Error())
 }
 
 func (a Service) ConvertError(err error) error {

@@ -335,3 +335,25 @@ func TestRemoveSymlink(t *testing.T) {
 		t.Errorf("symlink target has been removed: %s", err)
 	}
 }
+
+type readerOnly struct {
+	io.Reader
+}
+
+func BenchmarkWriteTo(b *testing.B) {
+	service, err := New(b.TempDir())
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	ctx := context.Background()
+	payload := strings.Repeat("a", 1<<20)
+
+	b.ReportAllocs()
+
+	for b.Loop() {
+		if err := service.WriteTo(ctx, "/file.txt", readerOnly{strings.NewReader(payload)}, model.WriteOpts{}); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
