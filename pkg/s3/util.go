@@ -8,6 +8,10 @@ import (
 	"github.com/minio/minio-go/v7"
 )
 
+func relative(name string) string {
+	return strings.TrimPrefix(name, "/")
+}
+
 func convertToItem(info minio.ObjectInfo) model.Item {
 	name := path.Base(info.Key)
 	pathname := "/" + strings.TrimSuffix(info.Key, "/")

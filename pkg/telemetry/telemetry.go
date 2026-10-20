@@ -31,10 +31,6 @@ func New(storage model.Storage, tracerProvider trace.TracerProvider) model.Stora
 	}
 }
 
-func (a Service) Enabled() bool {
-	return a.storage.Enabled()
-}
-
 func (a Service) Name() string {
 	return a.storage.Name()
 }
@@ -44,10 +40,6 @@ func (a Service) WithIgnoreFn(ignoreFn func(model.Item) bool) model.Storage {
 		storage: a.storage.WithIgnoreFn(ignoreFn),
 		tracer:  a.tracer,
 	}
-}
-
-func (a Service) Path(name string) string {
-	return a.storage.Path(name)
 }
 
 func (a Service) Stat(ctx context.Context, name string) (model.Item, error) {

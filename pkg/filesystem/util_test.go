@@ -8,49 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/DataDog/testify/assert"
 	"github.com/ViBiOh/absto/pkg/model"
 )
-
-func TestPath(t *testing.T) {
-	t.Parallel()
-
-	type args struct {
-		name string
-	}
-
-	cwd, err := os.Getwd()
-	assert.NoError(t, err)
-
-	root, err := os.OpenRoot(cwd)
-	assert.NoError(t, err)
-
-	cases := map[string]struct {
-		instance Service
-		args     args
-		want     string
-	}{
-		"simple": {
-			Service{
-				root: root,
-			},
-			args{
-				name: "/test",
-			},
-			cwd + "/test",
-		},
-	}
-
-	for intention, tc := range cases {
-		t.Run(intention, func(t *testing.T) {
-			t.Parallel()
-
-			if got := tc.instance.Path(tc.args.name); got != tc.want {
-				t.Errorf("Path() = `%s`, want `%s`", got, tc.want)
-			}
-		})
-	}
-}
 
 func TestConvertToItem(t *testing.T) {
 	t.Parallel()

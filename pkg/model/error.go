@@ -8,6 +8,7 @@ import (
 
 var (
 	errNotExists      = errors.New("not exists")
+	ErrNotEnabled     = errors.New("not enabled")
 	ErrRelativePath   = errors.New("name contains relatives paths")
 	ErrInvalidPath    = errors.New("name is invalid")
 	ErrDirExpected    = errors.New("directory expected")

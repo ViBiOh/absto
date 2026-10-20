@@ -49,6 +49,7 @@ type Service struct {
 	bucket       string
 	storageClass string
 	partSize     uint64
+	enabled      bool
 }
 
 func New(endpoint, accessKey, secretAccess, bucket string, useSSL bool, partSize uint64, options ...ConfigOption) (Service, error) {
@@ -75,11 +76,8 @@ func New(endpoint, accessKey, secretAccess, bucket string, useSSL bool, partSize
 		bucket:       bucket,
 		storageClass: config.storageClass,
 		partSize:     partSize,
+		enabled:      true,
 	}, nil
-}
-
-func (a Service) Enabled() bool {
-	return a.client != nil
 }
 
 func (a Service) Name() string {
@@ -92,16 +90,16 @@ func (a Service) WithIgnoreFn(ignoreFn func(model.Item) bool) model.Storage {
 	return a
 }
 
-func (a Service) Path(pathname string) string {
-	return strings.TrimPrefix(pathname, "/")
-}
-
 func (a Service) Stat(ctx context.Context, pathname string) (model.Item, error) {
+	if !a.enabled {
+		return model.Item{}, model.ErrNotEnabled
+	}
+
 	if err := model.ValidPath(pathname); err != nil {
 		return model.Item{}, err
 	}
 
-	realPathname := a.Path(pathname)
+	realPathname := relative(pathname)
 
 	if realPathname == "" {
 		return rootItem(), nil
@@ -163,6 +161,10 @@ func (a Service) dirExists(ctx context.Context, realPathname string) (bool, erro
 }
 
 func (a Service) List(ctx context.Context, pathname string) ([]model.Item, error) {
+	if !a.enabled {
+		return nil, model.ErrNotEnabled
+	}
+
 	if err := model.ValidPath(pathname); err != nil {
 		return nil, err
 	}
@@ -170,7 +172,7 @@ func (a Service) List(ctx context.Context, pathname string) ([]model.Item, error
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	prefix := a.Path(pathname)
+	prefix := relative(pathname)
 	if prefix != "" {
 		prefix = model.Dirname(prefix)
 	}
@@ -216,6 +218,10 @@ func (a Service) List(ctx context.Context, pathname string) ([]model.Item, error
 }
 
 func (a Service) WriteTo(ctx context.Context, pathname string, reader io.Reader, opts model.WriteOpts) error {
+	if !a.enabled {
+		return model.ErrNotEnabled
+	}
+
 	if err := model.ValidPath(pathname); err != nil {
 		return err
 	}
@@ -228,7 +234,7 @@ func (a Service) WriteTo(ctx context.Context, pathname string, reader io.Reader,
 		opts.Size = -1
 	}
 
-	if _, err := a.client.PutObject(ctx, a.bucket, a.Path(pathname), reader, opts.Size, minio.PutObjectOptions{
+	if _, err := a.client.PutObject(ctx, a.bucket, relative(pathname), reader, opts.Size, minio.PutObjectOptions{
 		PartSize:     a.partSize,
 		StorageClass: a.storageClass,
 	}); err != nil {
@@ -239,11 +245,15 @@ func (a Service) WriteTo(ctx context.Context, pathname string, reader io.Reader,
 }
 
 func (a Service) ReadFrom(ctx context.Context, pathname string) (model.ReadAtSeekCloser, error) {
+	if !a.enabled {
+		return nil, model.ErrNotEnabled
+	}
+
 	if err := model.ValidPath(pathname); err != nil {
 		return nil, err
 	}
 
-	object, err := a.client.GetObject(ctx, a.bucket, a.Path(pathname), minio.GetObjectOptions{})
+	object, err := a.client.GetObject(ctx, a.bucket, relative(pathname), minio.GetObjectOptions{})
 	if err != nil {
 		return nil, a.ConvertError(fmt.Errorf("get object: %w", err))
 	}
@@ -258,6 +268,10 @@ func (a Service) ReadFrom(ctx context.Context, pathname string) (model.ReadAtSee
 }
 
 func (a Service) UpdateDate(_ context.Context, pathname string, _ time.Time) error {
+	if !a.enabled {
+		return model.ErrNotEnabled
+	}
+
 	if err := model.ValidPath(pathname); err != nil {
 		return err
 	}
@@ -266,6 +280,10 @@ func (a Service) UpdateDate(_ context.Context, pathname string, _ time.Time) err
 }
 
 func (a Service) Walk(ctx context.Context, pathname string, walkFn func(model.Item) error) error {
+	if !a.enabled {
+		return model.ErrNotEnabled
+	}
+
 	if err := model.ValidPath(pathname); err != nil {
 		return err
 	}
@@ -294,7 +312,7 @@ func (a Service) Walk(ctx context.Context, pathname string, walkFn func(model.It
 		return walkFn(item)
 	}
 
-	dirPrefix := a.Path(pathname)
+	dirPrefix := relative(pathname)
 	if dirPrefix != "" {
 		dirPrefix = model.Dirname(dirPrefix)
 	} else if err := emit(rootItem()); err != nil {
@@ -346,7 +364,7 @@ func (a Service) walkObjects(ctx context.Context, pathname string, objectFn func
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	prefix := a.Path(pathname)
+	prefix := relative(pathname)
 
 	var found bool
 
@@ -395,11 +413,15 @@ func (a Service) walkObjects(ctx context.Context, pathname string, objectFn func
 }
 
 func (a Service) Mkdir(ctx context.Context, name string, _ os.FileMode) error {
+	if !a.enabled {
+		return model.ErrNotEnabled
+	}
+
 	if err := model.ValidPath(name); err != nil {
 		return err
 	}
 
-	trimmed := strings.Trim(a.Path(name), "/")
+	trimmed := strings.Trim(relative(name), "/")
 	if trimmed == "" {
 		return nil
 	}
@@ -441,6 +463,10 @@ func (a Service) Mkdir(ctx context.Context, name string, _ os.FileMode) error {
 }
 
 func (a Service) Rename(ctx context.Context, oldName, newName string) error {
+	if !a.enabled {
+		return model.ErrNotEnabled
+	}
+
 	if err := model.ValidPath(oldName); err != nil {
 		return err
 	}
@@ -449,8 +475,8 @@ func (a Service) Rename(ctx context.Context, oldName, newName string) error {
 		return err
 	}
 
-	oldPrefix := strings.Trim(a.Path(oldName), "/")
-	newPrefix := strings.Trim(a.Path(newName), "/")
+	oldPrefix := strings.Trim(relative(oldName), "/")
+	newPrefix := strings.Trim(relative(newName), "/")
 
 	if oldPrefix == "" || newPrefix == "" || strings.HasPrefix(newPrefix, oldPrefix+"/") {
 		return &fs.PathError{Op: "rename", Path: oldName, Err: syscall.EINVAL}
@@ -492,11 +518,15 @@ func (a Service) Rename(ctx context.Context, oldName, newName string) error {
 }
 
 func (a Service) RemoveAll(ctx context.Context, name string) error {
+	if !a.enabled {
+		return model.ErrNotEnabled
+	}
+
 	if err := model.ValidPath(name); err != nil {
 		return err
 	}
 
-	if strings.Trim(a.Path(name), "/") == "" {
+	if strings.Trim(relative(name), "/") == "" {
 		return &fs.PathError{Op: "RemoveAll", Path: name, Err: syscall.EINVAL}
 	}
 

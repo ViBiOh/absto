@@ -31,6 +31,7 @@ type Service struct {
 	ignoreFn    func(model.Item) bool
 	root        *os.Root
 	rootDirname string
+	enabled     bool
 }
 
 func New(directory string) (Service, error) {
@@ -57,11 +58,8 @@ func New(directory string) (Service, error) {
 	return Service{
 		root:        root,
 		rootDirname: info.Name(),
+		enabled:     true,
 	}, nil
-}
-
-func (a Service) Enabled() bool {
-	return a.root != nil
 }
 
 func (a Service) Name() string {
@@ -74,15 +72,11 @@ func (a Service) WithIgnoreFn(ignoreFn func(model.Item) bool) model.Storage {
 	return a
 }
 
-func (a Service) Path(name string) string {
-	if !a.Enabled() {
-		return ""
+func (a Service) Stat(_ context.Context, name string) (model.Item, error) {
+	if !a.enabled {
+		return model.Item{}, model.ErrNotEnabled
 	}
 
-	return path.Join(a.root.Name(), name)
-}
-
-func (a Service) Stat(_ context.Context, name string) (model.Item, error) {
 	if err := model.ValidPath(name); err != nil {
 		return model.Item{}, err
 	}
