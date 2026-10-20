@@ -86,7 +86,9 @@ func (fake *fakeServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case r.Method == http.MethodPost && query.Has("uploads"):
 		fake.initiateUpload(w, key)
 	case r.Method == http.MethodPost && uploadID != "":
-		fake.completeUpload(w, r, key, uploadID)
+		fake.completeUpload(w, key, uploadID)
+	case r.Method == http.MethodPost && query.Has("delete"):
+		fake.deleteObjects(w, r)
 	case r.Method == http.MethodPut && uploadID != "":
 		fake.putPart(w, r, uploadID, query.Get("partNumber"))
 	case r.Method == http.MethodPut:
@@ -132,7 +134,7 @@ func (fake *fakeServer) putPart(w http.ResponseWriter, r *http.Request, uploadID
 	w.WriteHeader(http.StatusOK)
 }
 
-func (fake *fakeServer) completeUpload(w http.ResponseWriter, r *http.Request, key, uploadID string) {
+func (fake *fakeServer) completeUpload(w http.ResponseWriter, key, uploadID string) {
 	parts, ok := fake.uploads[uploadID]
 	if !ok {
 		http.Error(w, "unknown upload", http.StatusNotFound)
@@ -157,6 +159,35 @@ func (fake *fakeServer) completeUpload(w http.ResponseWriter, r *http.Request, k
 
 	w.Header().Set("Content-Type", "application/xml")
 	_, _ = fmt.Fprintf(w, `<CompleteMultipartUploadResult><Bucket>%s</Bucket><Key>%s</Key><ETag>"abc"</ETag></CompleteMultipartUploadResult>`, testBucket, key)
+}
+
+func (fake *fakeServer) deleteObjects(w http.ResponseWriter, r *http.Request) {
+	var request struct {
+		Objects []struct {
+			Key string
+		} `xml:"Object"`
+	}
+
+	if err := xml.NewDecoder(r.Body).Decode(&request); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+
+		return
+	}
+
+	var response strings.Builder
+
+	response.WriteString("<DeleteResult>")
+
+	for _, object := range request.Objects {
+		delete(fake.objects, object.Key)
+
+		_, _ = fmt.Fprintf(&response, "<Deleted><Key>%s</Key></Deleted>", object.Key)
+	}
+
+	response.WriteString("</DeleteResult>")
+
+	w.Header().Set("Content-Type", "application/xml")
+	_, _ = io.WriteString(w, response.String())
 }
 
 func decodeBody(r *http.Request) ([]byte, error) {

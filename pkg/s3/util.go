@@ -1,12 +1,15 @@
 package s3
 
 import (
+	"errors"
 	"path"
 	"strings"
 
 	"github.com/ViBiOh/absto/pkg/model"
 	"github.com/minio/minio-go/v7"
 )
+
+var errStopWalk = errors.New("stop walk")
 
 func relative(name string) string {
 	return strings.TrimPrefix(name, "/")

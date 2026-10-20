@@ -2,6 +2,7 @@ package s3
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -530,15 +531,31 @@ func (a Service) RemoveAll(ctx context.Context, name string) error {
 		return &fs.PathError{Op: "RemoveAll", Path: name, Err: syscall.EINVAL}
 	}
 
-	_, err := a.walkObjects(ctx, name, func(info minio.ObjectInfo, _ bool) error {
-		if err := a.client.RemoveObject(ctx, a.bucket, info.Key, minio.RemoveObjectOptions{}); err != nil {
-			return a.ConvertError(fmt.Errorf("delete object: %w", err))
+	var walkErr error
+
+	walkIter := func(yield func(minio.ObjectInfo) bool) {
+		_, walkErr = a.walkObjects(ctx, name, func(info minio.ObjectInfo, _ bool) error {
+			if !yield(info) {
+				return errStopWalk
+			}
+			return nil
+		})
+
+		if errors.Is(walkErr, errStopWalk) {
+			walkErr = nil
 		}
+	}
 
-		return nil
-	})
+	results, err := a.client.RemoveObjectsWithIter(ctx, a.bucket, walkIter, minio.RemoveObjectsOptions{})
+	if err != nil {
+		return fmt.Errorf("remove iter: %w", a.ConvertError(err))
+	}
 
-	return err
+	for resultErr := range results {
+		err = errors.Join(err, a.ConvertError(resultErr.Err))
+	}
+
+	return errors.Join(err, walkErr)
 }
 
 func IsNotExist(err error) bool {
