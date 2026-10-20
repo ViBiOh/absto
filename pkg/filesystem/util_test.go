@@ -52,42 +52,6 @@ func TestPath(t *testing.T) {
 	}
 }
 
-func TestGetMode(t *testing.T) {
-	t.Parallel()
-
-	type args struct {
-		name string
-	}
-
-	cases := map[string]struct {
-		args args
-		want os.FileMode
-	}{
-		"directory": {
-			args{
-				name: "/photos/",
-			},
-			model.DirectoryPerm,
-		},
-		"file": {
-			args{
-				name: "/photo.png",
-			},
-			model.RegularFilePerm,
-		},
-	}
-
-	for intention, tc := range cases {
-		t.Run(intention, func(t *testing.T) {
-			t.Parallel()
-
-			if got := getMode(tc.args.name); got != tc.want {
-				t.Errorf("getMode() = %d, want %d", got, tc.want)
-			}
-		})
-	}
-}
-
 func TestConvertToItem(t *testing.T) {
 	t.Parallel()
 

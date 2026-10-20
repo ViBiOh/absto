@@ -77,43 +77,27 @@ func (a Service) newItem(pathname string, info fs.FileInfo) model.Item {
 	return item
 }
 
+func (a Service) getReadableFile(filename string) (model.ReadAtSeekCloser, error) {
+	return a.getFile(filename, model.ReadFlag)
+}
+
+func (a Service) getWritableFile(filename string) (io.WriteCloser, error) {
+	return a.getFile(filename, model.WriteFlag)
+}
+
 func (a Service) getFile(filename string, flags int) (*os.File, error) {
-	file, err := a.root.OpenFile(a.relative(filename), flags, getMode(filename))
+	relativeName := a.relative(filename)
+
+	if strings.HasSuffix(relativeName, "/") {
+		return nil, &fs.PathError{Op: "open", Path: filename, Err: syscall.EISDIR}
+	}
+
+	file, err := a.root.OpenFile(relativeName, flags, model.RegularFilePerm)
 	if err != nil {
 		return nil, a.ConvertError(err)
 	}
 
 	return file, nil
-}
-
-func (a Service) getReadableFile(filename string) (model.ReadAtSeekCloser, error) {
-	file, err := a.getFile(filename, model.ReadFlag)
-	if err != nil {
-		return nil, err
-	}
-
-	return file, nil
-}
-
-func (a Service) getWritableFile(filename string) (io.WriteCloser, error) {
-	if strings.HasSuffix(filename, "/") {
-		return nil, &fs.PathError{Op: "open", Path: filename, Err: syscall.EISDIR}
-	}
-
-	file, err := a.getFile(filename, model.WriteFlag)
-	if err != nil {
-		return nil, err
-	}
-
-	return file, nil
-}
-
-func getMode(name string) os.FileMode {
-	if strings.HasSuffix(name, "/") {
-		return model.DirectoryPerm
-	}
-
-	return model.RegularFilePerm
 }
 
 func convertToItem(pathname string, info fs.FileInfo) model.Item {

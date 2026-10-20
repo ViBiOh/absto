@@ -11,10 +11,7 @@ import (
 	"github.com/zeebo/xxh3"
 )
 
-var (
-	_ os.FileInfo = Item{}
-	_ fs.FileInfo = Item{}
-)
+var _ fs.FileInfo = Item{}
 
 type Item struct {
 	Date       time.Time   `json:"date"      msg:"date"`
