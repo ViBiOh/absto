@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/ViBiOh/absto/pkg/model"
+	"github.com/minio/minio-go/v7"
 )
 
 const (
@@ -682,5 +683,32 @@ func TestUpdateDate(t *testing.T) {
 
 	if !errors.Is(err, errors.ErrUnsupported) {
 		t.Errorf("UpdateDate() error = %v, want errors.ErrUnsupported", err)
+	}
+}
+
+func TestIsNotExist(t *testing.T) {
+	t.Parallel()
+
+	cases := map[string]struct {
+		err  error
+		want bool
+	}{
+		"nil":                 {nil, false},
+		"no such key":         {minio.ErrorResponse{Code: minio.NoSuchKey, Message: "The specified key does not exist."}, true},
+		"wrapped no such key": {fmt.Errorf("stat object: %w", minio.ErrorResponse{Code: minio.NoSuchKey}), true},
+		"no such bucket":      {minio.ErrorResponse{Code: minio.NoSuchBucket}, false},
+		"access denied":       {minio.ErrorResponse{Code: minio.AccessDenied}, false},
+		"message only":        {errors.New("The specified key does not exist"), false},
+		"plain":               {errors.New("boom"), false},
+	}
+
+	for intention, tc := range cases {
+		t.Run(intention, func(t *testing.T) {
+			t.Parallel()
+
+			if got := IsNotExist(tc.err); got != tc.want {
+				t.Errorf("IsNotExist() = %t, want %t", got, tc.want)
+			}
+		})
 	}
 }

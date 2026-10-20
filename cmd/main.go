@@ -14,12 +14,12 @@ import (
 )
 
 func main() {
-	fs := flag.NewFlagSet("absto", flag.ExitOnError)
-	fs.Usage = flags.Usage(fs)
+	flagSet := flag.NewFlagSet("absto", flag.ExitOnError)
+	flagSet.Usage = flags.Usage(flagSet)
 
-	config := absto.Flags(fs, "")
+	config := absto.Flags(flagSet, "")
 
-	_ = fs.Parse(os.Args[1:])
+	_ = flagSet.Parse(os.Args[1:])
 
 	ctx := context.Background()
 

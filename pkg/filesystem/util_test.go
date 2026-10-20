@@ -3,9 +3,11 @@ package filesystem
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/fs"
 	"os"
 	"strings"
+	"syscall"
 	"testing"
 
 	"github.com/ViBiOh/absto/pkg/model"
@@ -149,6 +151,18 @@ func TestConvertError(t *testing.T) {
 			},
 			model.ErrNotExist(os.ErrNotExist),
 		},
+		"not a directory": {
+			args{
+				err: &fs.PathError{Op: "readdirent", Path: "file", Err: syscall.ENOTDIR},
+			},
+			model.ErrNotExist(errors.New("readdirent file: not a directory")),
+		},
+		"wrapped not a directory": {
+			args{
+				err: fmt.Errorf("walk: %w", &fs.PathError{Op: "readdirent", Path: "file", Err: syscall.ENOTDIR}),
+			},
+			model.ErrNotExist(errors.New("walk: readdirent file: not a directory")),
+		},
 		"standard": {
 			args{
 				err: errors.New("read"),
@@ -185,8 +199,7 @@ func BenchmarkConvertToItem(b *testing.B) {
 		b.Error(err)
 	}
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		convertToItem("/pkg/filesystem/utils_test.go", info)
 	}
 }
@@ -199,8 +212,7 @@ func BenchmarkJsonItem(b *testing.B) {
 
 	item := convertToItem("/pkg/filesystem/utils_test.go", info)
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, _ = json.Marshal(item)
 	}
 }
