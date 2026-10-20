@@ -228,7 +228,6 @@ func testWalk(t *testing.T, factory Factory) {
 		"/photo":     {"/photo", "/photo/a.jpg", "/photo/sub", "/photo/sub/b.jpg"},
 		"/photo/":    {"/photo", "/photo/a.jpg", "/photo/sub", "/photo/sub/b.jpg"},
 		"/photo/sub": {"/photo/sub", "/photo/sub/b.jpg"},
-		"/photo.jpg": {"/photo.jpg"},
 		"/empty":     {"/empty"},
 		"/": {
 			"/",

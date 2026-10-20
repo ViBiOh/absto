@@ -10,6 +10,7 @@ var (
 	errNotExists      = errors.New("not exists")
 	ErrRelativePath   = errors.New("name contains relatives paths")
 	ErrInvalidPath    = errors.New("name is invalid")
+	ErrDirExpected    = errors.New("directory expected")
 	ErrUnsupported    = fmt.Errorf("not supported by the storage: %w", errors.ErrUnsupported)
 	relativePathRegex = regexp.MustCompile(`(?m)(\/|^)\.\.(\/|$)`)
 )

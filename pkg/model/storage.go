@@ -13,7 +13,7 @@ const (
 	RegularFilePerm = 0o600
 
 	ReadFlag  = os.O_RDONLY
-	WriteFlag = os.O_RDWR | os.O_CREATE | os.O_TRUNC
+	WriteFlag = os.O_WRONLY | os.O_CREATE | os.O_TRUNC
 )
 
 type WriteOpts struct {

@@ -10,6 +10,7 @@ import (
 	"path"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/ViBiOh/absto/pkg/model"
@@ -86,13 +87,17 @@ func (a Service) Stat(_ context.Context, name string) (model.Item, error) {
 		return model.Item{}, err
 	}
 
+	return a.stat(name)
+}
+
+func (a Service) stat(name string) (model.Item, error) {
 	info, err := a.root.Stat(a.relative(name))
 	if err != nil {
 		return model.Item{}, a.ConvertError(err)
 	}
 
-	if err = a.requireDirectory(name, info); err != nil {
-		return model.Item{}, err
+	if strings.HasSuffix(name, "/") && !info.IsDir() {
+		return model.Item{}, a.ConvertError(&fs.PathError{Op: "stat", Path: name, Err: syscall.ENOTDIR})
 	}
 
 	return a.newItem(a.pathname(name), info), nil
@@ -108,10 +113,12 @@ func (a Service) List(_ context.Context, name string) ([]model.Item, error) {
 		return nil, a.ConvertError(err)
 	}
 
+	dirName := a.pathname(name)
+
 	items := make([]model.Item, 0, len(infos))
 
 	for _, info := range infos {
-		item := a.newItem(path.Join("/", name, info.Name()), info)
+		item := a.newItem(path.Join(dirName, info.Name()), info)
 		if a.ignoreFn != nil && a.ignoreFn(item) {
 			continue
 		}
@@ -137,7 +144,7 @@ func (a Service) WriteTo(_ context.Context, name string, reader io.Reader, _ mod
 	}
 
 	if err != nil {
-		return err
+		return fmt.Errorf("get writable file: %w", err)
 	}
 
 	buf := bufferPool.Get().(*[]byte)
@@ -179,8 +186,8 @@ func (a Service) Walk(_ context.Context, name string, walkFn func(model.Item) er
 		return a.ConvertError(err)
 	}
 
-	if err = a.requireDirectory(name, info); err != nil {
-		return err
+	if !info.IsDir() {
+		return model.ErrDirExpected
 	}
 
 	return a.ConvertError(a.walk(relative, a.pathname(name), info, walkFn))
@@ -206,7 +213,9 @@ func (a Service) walk(relative, pathname string, info fs.FileInfo, walkFn func(m
 	}
 
 	for _, child := range children {
-		if err = a.walk(path.Join(relative, child.Name()), path.Join(pathname, child.Name()), child, walkFn); err != nil {
+		name := child.Name()
+
+		if err = a.walk(path.Join(relative, name), path.Join(pathname, name), child, walkFn); err != nil {
 			return err
 		}
 	}
@@ -231,16 +240,19 @@ func (a Service) Rename(ctx context.Context, oldName, newName string) error {
 		return err
 	}
 
-	if _, err := a.Stat(ctx, oldName); err != nil {
+	if _, err := a.stat(oldName); err != nil {
 		return err
 	}
 
-	if a.relative(oldName) == a.relative(newName) {
+	oldRelative := a.relative(oldName)
+	newRelative := a.relative(newName)
+
+	if oldRelative == newRelative {
 		return nil
 	}
 
 	newDirPath := path.Dir(strings.TrimSuffix(newName, "/"))
-	if _, err := a.Stat(ctx, newDirPath); err != nil {
+	if _, err := a.stat(newDirPath); err != nil {
 		if model.IsNotExist(err) {
 			if err = a.Mkdir(ctx, newDirPath, model.DirectoryPerm); err != nil {
 				return a.ConvertError(err)
@@ -250,7 +262,7 @@ func (a Service) Rename(ctx context.Context, oldName, newName string) error {
 		}
 	}
 
-	return a.ConvertError(a.root.Rename(a.relative(oldName), a.relative(newName)))
+	return a.ConvertError(a.root.Rename(oldRelative, newRelative))
 }
 
 func (a Service) RemoveAll(_ context.Context, name string) error {
@@ -258,13 +270,15 @@ func (a Service) RemoveAll(_ context.Context, name string) error {
 		return err
 	}
 
+	relativeName := a.relative(name)
+
 	if strings.HasSuffix(name, "/") {
-		if info, err := a.root.Stat(a.relative(name)); err == nil && !info.IsDir() {
+		if info, err := a.root.Stat(relativeName); err == nil && !info.IsDir() {
 			return nil
 		}
 	}
 
-	return a.ConvertError(a.root.RemoveAll(a.relative(name)))
+	return a.ConvertError(a.root.RemoveAll(relativeName))
 }
 
 func (a Service) ConvertError(err error) error {

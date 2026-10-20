@@ -34,18 +34,18 @@ func (a Service) pathname(name string) string {
 func (a Service) readDir(relative string) ([]fs.FileInfo, error) {
 	entries, err := fs.ReadDir(a.root.FS(), relative)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("read dir: %w", err)
 	}
 
 	infos := make([]fs.FileInfo, 0, len(entries))
 
 	for _, entry := range entries {
 		info, err := entry.Info()
-		if errors.Is(err, fs.ErrNotExist) {
-			continue
-		}
-
 		if err != nil {
+			if errors.Is(err, fs.ErrNotExist) {
+				continue
+			}
+
 			return nil, fmt.Errorf("read file metadata: %w", err)
 		}
 
@@ -57,14 +57,6 @@ func (a Service) readDir(relative string) ([]fs.FileInfo, error) {
 	})
 
 	return infos, nil
-}
-
-func (a Service) requireDirectory(name string, info fs.FileInfo) error {
-	if strings.HasSuffix(name, "/") && !info.IsDir() {
-		return a.ConvertError(&fs.PathError{Op: "stat", Path: name, Err: syscall.ENOTDIR})
-	}
-
-	return nil
 }
 
 func sortKey(info fs.FileInfo) string {
