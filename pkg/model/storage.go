@@ -3,7 +3,6 @@ package model
 import (
 	"context"
 	"io"
-	"io/fs"
 	"os"
 	"time"
 )
@@ -13,7 +12,7 @@ const (
 	RegularFilePerm = 0o600
 
 	ReadFlag  = os.O_RDONLY
-	WriteFlag = os.O_RDWR | os.O_CREATE | os.O_TRUNC
+	WriteFlag = os.O_WRONLY | os.O_CREATE | os.O_TRUNC
 )
 
 type WriteOpts struct {
@@ -23,13 +22,6 @@ type WriteOpts struct {
 type ReadAtSeekCloser interface {
 	io.ReadSeekCloser
 	io.ReaderAt
-}
-
-type File interface {
-	ReadAtSeekCloser
-	io.Writer
-	Readdir(int) ([]fs.FileInfo, error)
-	Stat() (fs.FileInfo, error)
 }
 
 type Storage interface {

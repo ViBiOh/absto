@@ -130,28 +130,30 @@ func (a Service) WriteTo(_ context.Context, name string, reader io.Reader, _ mod
 		return err
 	}
 
-	writer, err := a.getWritableFile(name)
-	if model.IsNotExist(err) {
-		if err = a.root.MkdirAll(path.Dir(a.relative(name)), model.DirectoryPerm); err != nil {
-			return a.ConvertError(err)
-		}
+	if strings.HasSuffix(name, "/") {
+		return &fs.PathError{Op: "open", Path: name, Err: syscall.EISDIR}
+	}
 
-		writer, err = a.getWritableFile(name)
+	relative := a.relative(name)
+
+	existing, err := a.root.Lstat(relative)
+	if errors.Is(err, fs.ErrNotExist) {
+		return a.writeAtomic(relative, reader, nil)
 	}
 
 	if err != nil {
-		return err
+		return a.ConvertError(err)
 	}
 
-	buf := bufferPool.Get().(*[]byte)
-	defer bufferPool.Put(buf)
-
-	// *os.File implements io.ReaderFrom, which makes io.CopyBuffer ignore buf and allocate its own.
-	if _, err = io.CopyBuffer(writerOnly{Writer: writer}, reader, *buf); err != nil {
-		err = a.ConvertError(err)
+	switch {
+	case existing.IsDir():
+		return &fs.PathError{Op: "open", Path: name, Err: syscall.EISDIR}
+	case existing.Mode()&fs.ModeSymlink != 0:
+		// A rename would replace the link itself instead of writing to its target.
+		return a.writeDirect(relative, reader)
+	default:
+		return a.writeAtomic(relative, reader, existing)
 	}
-
-	return errors.Join(err, writer.Close())
 }
 
 func (a Service) ReadFrom(_ context.Context, name string) (model.ReadAtSeekCloser, error) {

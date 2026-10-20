@@ -394,3 +394,225 @@ func TestConvertErrorDetection(t *testing.T) {
 		})
 	}
 }
+
+type failingReader struct {
+	content string
+	read    bool
+}
+
+func (reader *failingReader) Read(buf []byte) (int, error) {
+	if reader.read {
+		return 0, io.ErrUnexpectedEOF
+	}
+
+	reader.read = true
+
+	return copy(buf, reader.content), nil
+}
+
+func newWriteRoot(t *testing.T) (string, Service) {
+	t.Helper()
+
+	root := t.TempDir()
+
+	service, err := New(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return root, service
+}
+
+func listNames(t *testing.T, directory string) []string {
+	t.Helper()
+
+	entries, err := os.ReadDir(directory)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	names := make([]string, 0, len(entries))
+	for _, entry := range entries {
+		names = append(names, entry.Name())
+	}
+
+	return names
+}
+
+func TestWriteToAtomic(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+
+	t.Run("failed copy keeps the previous content", func(t *testing.T) {
+		t.Parallel()
+
+		root, service := newWriteRoot(t)
+		target := filepath.Join(root, "file.txt")
+
+		if err := os.WriteFile(target, []byte("original"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+
+		err := service.WriteTo(ctx, "/file.txt", &failingReader{content: "partial"}, model.WriteOpts{})
+		if !errors.Is(err, io.ErrUnexpectedEOF) {
+			t.Fatalf("WriteTo() error = %v, want %v", err, io.ErrUnexpectedEOF)
+		}
+
+		content, err := os.ReadFile(target)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if string(content) != "original" {
+			t.Errorf("content = %q, want `original`", content)
+		}
+
+		if got := listNames(t, root); !slices.Equal(got, []string{"file.txt"}) {
+			t.Errorf("directory content = %v, want only the target", got)
+		}
+	})
+
+	t.Run("failed copy of a new file leaves nothing", func(t *testing.T) {
+		t.Parallel()
+
+		root, service := newWriteRoot(t)
+
+		if err := service.WriteTo(ctx, "/new/file.txt", &failingReader{content: "partial"}, model.WriteOpts{}); err == nil {
+			t.Fatal("WriteTo() want an error")
+		}
+
+		if _, err := os.Stat(filepath.Join(root, "new", "file.txt")); err == nil {
+			t.Error("target exists after a failed write")
+		}
+
+		if got := listNames(t, filepath.Join(root, "new")); len(got) != 0 {
+			t.Errorf("directory content = %v, want empty", got)
+		}
+	})
+
+	t.Run("readers see the previous content until the write completes", func(t *testing.T) {
+		t.Parallel()
+
+		root, service := newWriteRoot(t)
+		target := filepath.Join(root, "file.txt")
+
+		if err := os.WriteFile(target, []byte("original"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+
+		pipeReader, pipeWriter := io.Pipe()
+		done := make(chan error, 1)
+
+		go func() {
+			done <- service.WriteTo(ctx, "/file.txt", pipeReader, model.WriteOpts{})
+		}()
+
+		if _, err := pipeWriter.Write([]byte("partial")); err != nil {
+			t.Fatal(err)
+		}
+
+		content, err := os.ReadFile(target)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if string(content) != "original" {
+			t.Errorf("content during the write = %q, want `original`", content)
+		}
+
+		if _, err = pipeWriter.Write([]byte("-end")); err != nil {
+			t.Fatal(err)
+		}
+
+		if err = pipeWriter.Close(); err != nil {
+			t.Fatal(err)
+		}
+
+		if err = <-done; err != nil {
+			t.Fatalf("WriteTo() unexpected error: %s", err)
+		}
+
+		if content, err = os.ReadFile(target); err != nil || string(content) != "partial-end" {
+			t.Errorf("content after the write = %q, %v, want `partial-end`", content, err)
+		}
+
+		if got := listNames(t, root); !slices.Equal(got, []string{"file.txt"}) {
+			t.Errorf("directory content = %v, want only the target", got)
+		}
+	})
+
+	t.Run("existing permissions are kept", func(t *testing.T) {
+		t.Parallel()
+
+		root, service := newWriteRoot(t)
+		target := filepath.Join(root, "file.txt")
+
+		if err := os.WriteFile(target, []byte("original"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+
+		if err := os.Chmod(target, 0o640); err != nil {
+			t.Fatal(err)
+		}
+
+		if err := service.WriteTo(ctx, "/file.txt", strings.NewReader("new"), model.WriteOpts{}); err != nil {
+			t.Fatal(err)
+		}
+
+		info, err := os.Stat(target)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if info.Mode().Perm() != 0o640 {
+			t.Errorf("mode = %o, want 640", info.Mode().Perm())
+		}
+	})
+
+	t.Run("symlink is written through", func(t *testing.T) {
+		t.Parallel()
+
+		root, service := newWriteRoot(t)
+
+		if err := os.WriteFile(filepath.Join(root, "real.txt"), []byte("original"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+
+		if err := os.Symlink("real.txt", filepath.Join(root, "link.txt")); err != nil {
+			t.Fatal(err)
+		}
+
+		if err := service.WriteTo(ctx, "/link.txt", strings.NewReader("new"), model.WriteOpts{}); err != nil {
+			t.Fatal(err)
+		}
+
+		info, err := os.Lstat(filepath.Join(root, "link.txt"))
+		if err != nil || info.Mode()&os.ModeSymlink == 0 {
+			t.Errorf("link replaced by %v, %v", info, err)
+		}
+
+		content, err := os.ReadFile(filepath.Join(root, "real.txt"))
+		if err != nil || string(content) != "new" {
+			t.Errorf("target content = %q, %v, want `new`", content, err)
+		}
+	})
+
+	t.Run("directory", func(t *testing.T) {
+		t.Parallel()
+
+		root, service := newWriteRoot(t)
+
+		if err := os.Mkdir(filepath.Join(root, "dir"), 0o700); err != nil {
+			t.Fatal(err)
+		}
+
+		if err := service.WriteTo(ctx, "/dir", strings.NewReader("new"), model.WriteOpts{}); !errors.Is(err, syscall.EISDIR) {
+			t.Errorf("WriteTo() error = %v, want %v", err, syscall.EISDIR)
+		}
+
+		if got := listNames(t, filepath.Join(root, "dir")); len(got) != 0 {
+			t.Errorf("directory content = %v, want empty", got)
+		}
+	})
+}
