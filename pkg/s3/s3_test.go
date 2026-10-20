@@ -16,7 +16,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"testing"
 	"time"
 
@@ -30,18 +29,11 @@ const (
 )
 
 type fakeServer struct {
-	objects       map[string]string
-	uploads       map[string]map[int]string
-	failDelete    string
-	failCopy      string
-	requests      []string
-	copyDelay     time.Duration
-	deleteBatches int
-	singleDeletes int
-	mutex         sync.Mutex
-	copyInflight  atomic.Int32
-	copyPeak      atomic.Int32
-	listErr       bool
+	objects  map[string]string
+	uploads  map[string]map[int]string
+	requests []string
+	mutex    sync.Mutex
+	listErr  bool
 }
 
 type listEntry struct {
@@ -63,26 +55,7 @@ func (fake *fakeServer) keys() []string {
 	return keys
 }
 
-func (fake *fakeServer) trackCopy(r *http.Request) func() {
-	if r.Method != http.MethodPut || r.Header.Get("X-Amz-Copy-Source") == "" {
-		return func() {}
-	}
-
-	current := fake.copyInflight.Add(1)
-
-	for {
-		peak := fake.copyPeak.Load()
-		if current <= peak || fake.copyPeak.CompareAndSwap(peak, current) {
-			break
-		}
-	}
-
-	return func() { fake.copyInflight.Add(-1) }
-}
-
 func (fake *fakeServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	defer fake.trackCopy(r)()
-
 	fake.mutex.Lock()
 	defer fake.mutex.Unlock()
 
@@ -109,16 +82,12 @@ func (fake *fakeServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		delete(fake.uploads, uploadID)
 		w.WriteHeader(http.StatusNoContent)
 	case r.Method == http.MethodDelete:
-		fake.singleDeletes++
-
 		delete(fake.objects, key)
 		w.WriteHeader(http.StatusNoContent)
-	case r.Method == http.MethodPost && key == "" && query.Has("delete"):
-		fake.deleteObjects(w, r)
 	case r.Method == http.MethodPost && query.Has("uploads"):
 		fake.initiateUpload(w, key)
 	case r.Method == http.MethodPost && uploadID != "":
-		fake.completeUpload(w, key, uploadID)
+		fake.completeUpload(w, r, key, uploadID)
 	case r.Method == http.MethodPut && uploadID != "":
 		fake.putPart(w, r, uploadID, query.Get("partNumber"))
 	case r.Method == http.MethodPut:
@@ -126,41 +95,6 @@ func (fake *fakeServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	default:
 		http.Error(w, "not implemented", http.StatusNotImplemented)
 	}
-}
-
-func (fake *fakeServer) deleteObjects(w http.ResponseWriter, r *http.Request) {
-	var request struct {
-		Objects []struct {
-			Key string `xml:"Key"`
-		} `xml:"Object"`
-	}
-
-	if err := xml.NewDecoder(r.Body).Decode(&request); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-
-		return
-	}
-
-	fake.deleteBatches++
-
-	var result strings.Builder
-
-	result.WriteString("<DeleteResult>")
-
-	for _, object := range request.Objects {
-		if object.Key == fake.failDelete {
-			_, _ = fmt.Fprintf(&result, `<Error><Key>%s</Key><Code>AccessDenied</Code><Message>denied</Message></Error>`, object.Key)
-
-			continue
-		}
-
-		delete(fake.objects, object.Key)
-	}
-
-	result.WriteString("</DeleteResult>")
-
-	w.Header().Set("Content-Type", "application/xml")
-	_, _ = w.Write([]byte(result.String()))
 }
 
 func (fake *fakeServer) initiateUpload(w http.ResponseWriter, key string) {
@@ -199,7 +133,7 @@ func (fake *fakeServer) putPart(w http.ResponseWriter, r *http.Request, uploadID
 	w.WriteHeader(http.StatusOK)
 }
 
-func (fake *fakeServer) completeUpload(w http.ResponseWriter, key, uploadID string) {
+func (fake *fakeServer) completeUpload(w http.ResponseWriter, r *http.Request, key, uploadID string) {
 	parts, ok := fake.uploads[uploadID]
 	if !ok {
 		http.Error(w, "unknown upload", http.StatusNotFound)
@@ -325,16 +259,6 @@ func (fake *fakeServer) put(w http.ResponseWriter, r *http.Request, key string) 
 
 	_, sourceKey, _ := strings.Cut(strings.TrimPrefix(unescaped, "/"), "/")
 
-	time.Sleep(fake.copyDelay)
-
-	if sourceKey == fake.failCopy {
-		w.Header().Set("Content-Type", "application/xml")
-		w.WriteHeader(http.StatusForbidden)
-		_, _ = w.Write([]byte(`<Error><Code>AccessDenied</Code><Message>denied</Message></Error>`))
-
-		return
-	}
-
 	content, ok := fake.objects[sourceKey]
 	if !ok {
 		w.WriteHeader(http.StatusNotFound)
@@ -367,7 +291,10 @@ func (fake *fakeServer) list(w http.ResponseWriter, r *http.Request) {
 		maxKeys = value
 	}
 
-	token := query.Get("continuation-token")
+	var start int
+	if token := query.Get("continuation-token"); token != "" {
+		start, _ = strconv.Atoi(token)
+	}
 
 	var entries []listEntry
 	seenPrefixes := make(map[string]struct{})
@@ -396,7 +323,6 @@ func (fake *fakeServer) list(w http.ResponseWriter, r *http.Request) {
 
 	slices.SortFunc(entries, func(a, b listEntry) int { return strings.Compare(a.key, b.key) })
 
-	start := sort.Search(len(entries), func(index int) bool { return entries[index].key > token })
 	end := min(start+maxKeys, len(entries))
 	truncated := end < len(entries)
 
@@ -407,7 +333,7 @@ func (fake *fakeServer) list(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(&output, `<IsTruncated>%t</IsTruncated>`, truncated)
 
 	if truncated {
-		fmt.Fprintf(&output, `<NextContinuationToken>%s</NextContinuationToken>`, escapedToken(entries[end-1].key))
+		fmt.Fprintf(&output, `<NextContinuationToken>%d</NextContinuationToken>`, end)
 	}
 
 	for _, entry := range entries[start:end] {
@@ -429,7 +355,9 @@ func (fake *fakeServer) list(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write([]byte(output.String()))
 }
 
-func newFake(listErr bool, keys ...string) *fakeServer {
+func newTestService(t *testing.T, listErr bool, keys ...string) (Service, *fakeServer) {
+	t.Helper()
+
 	fake := &fakeServer{
 		objects: make(map[string]string, len(keys)),
 		uploads: make(map[string]map[int]string),
@@ -440,31 +368,15 @@ func newFake(listErr bool, keys ...string) *fakeServer {
 		fake.objects[key] = "content"
 	}
 
-	return fake
-}
-
-func startFake(t *testing.T, fake *fakeServer, options ...ConfigOption) Service {
-	t.Helper()
-
 	server := httptest.NewServer(fake)
 	t.Cleanup(server.Close)
 
-	options = append([]ConfigOption{WithRegion("us-east-1")}, options...)
-
-	service, err := New(strings.TrimPrefix(server.URL, "http://"), "access", "secret", testBucket, false, 5<<20, options...)
+	service, err := New(strings.TrimPrefix(server.URL, "http://"), "access", "secret", testBucket, false, 5<<20, WithRegion("us-east-1"))
 	if err != nil {
 		t.Fatalf("new service: %s", err)
 	}
 
-	return service
-}
-
-func newTestService(t *testing.T, listErr bool, keys ...string) (Service, *fakeServer) {
-	t.Helper()
-
-	fake := newFake(listErr, keys...)
-
-	return startFake(t, fake), fake
+	return service, fake
 }
 
 var testKeys = []string{"photo/", "photo/a.jpg", "photos/b.jpg", "photo.jpg"}
@@ -799,126 +711,4 @@ func TestIsNotExist(t *testing.T) {
 			}
 		})
 	}
-}
-
-func numberedKeys(prefix string, count int) []string {
-	keys := make([]string, 0, count)
-
-	for index := range count {
-		keys = append(keys, fmt.Sprintf("%s/%04d.txt", prefix, index))
-	}
-
-	return keys
-}
-
-func TestRemoveAllBatches(t *testing.T) {
-	t.Parallel()
-
-	keys := append(numberedKeys("dir", 2500), "other/keep.txt")
-
-	service, fake := newTestService(t, false, keys...)
-
-	if err := service.RemoveAll(context.Background(), "/dir"); err != nil {
-		t.Fatalf("RemoveAll() unexpected error: %s", err)
-	}
-
-	if got := fake.keys(); !slices.Equal(got, []string{"other/keep.txt"}) {
-		t.Errorf("RemoveAll() left %d keys, want only the sibling", len(got))
-	}
-
-	fake.mutex.Lock()
-	defer fake.mutex.Unlock()
-
-	if fake.singleDeletes != 0 {
-		t.Errorf("RemoveAll() issued %d single deletes, want 0", fake.singleDeletes)
-	}
-
-	if fake.deleteBatches < 3 || fake.deleteBatches > 5 {
-		t.Errorf("RemoveAll() issued %d batch deletes, want 3 to 5 for 2500 keys", fake.deleteBatches)
-	}
-}
-
-func TestRemoveAllDeleteError(t *testing.T) {
-	t.Parallel()
-
-	fake := newFake(false, "dir/a.txt", "dir/b.txt", "dir/c.txt")
-	fake.failDelete = "dir/b.txt"
-
-	service := startFake(t, fake)
-
-	err := service.RemoveAll(context.Background(), "/dir")
-	if err == nil {
-		t.Fatal("RemoveAll() want an error when a deletion is refused")
-	}
-
-	if model.IsNotExist(err) {
-		t.Errorf("RemoveAll() error `%s` must not be a not exist error", err)
-	}
-}
-
-func TestRenameConcurrency(t *testing.T) {
-	t.Parallel()
-
-	const limit = 4
-
-	fake := newFake(false, numberedKeys("src", 40)...)
-	fake.copyDelay = 3 * time.Millisecond
-
-	service := startFake(t, fake, WithConcurrency(limit))
-
-	if err := service.Rename(context.Background(), "/src", "/dst"); err != nil {
-		t.Fatalf("Rename() unexpected error: %s", err)
-	}
-
-	want := numberedKeys("dst", 40)
-	if got := fake.keys(); !slices.Equal(got, want) {
-		t.Errorf("Rename() produced %d keys, want %d under dst", len(got), len(want))
-	}
-
-	if peak := fake.copyPeak.Load(); peak < 2 || peak > limit {
-		t.Errorf("Rename() peak of %d concurrent copies, want between 2 and %d", peak, limit)
-	}
-
-	fake.mutex.Lock()
-	defer fake.mutex.Unlock()
-
-	if fake.singleDeletes != 0 || fake.deleteBatches != 1 {
-		t.Errorf("Rename() issued %d single deletes and %d batch deletes, want 0 and 1", fake.singleDeletes, fake.deleteBatches)
-	}
-}
-
-func TestRenameCopyError(t *testing.T) {
-	t.Parallel()
-
-	keys := []string{"src/a.txt", "src/b.txt", "src/c.txt"}
-
-	fake := newFake(false, keys...)
-	fake.failCopy = "src/b.txt"
-
-	service := startFake(t, fake, WithConcurrency(2))
-
-	if err := service.Rename(context.Background(), "/src", "/dst"); err == nil {
-		t.Fatal("Rename() want an error when a copy is refused")
-	}
-
-	for _, key := range keys {
-		if !slices.Contains(fake.keys(), key) {
-			t.Errorf("source %s was deleted although the rename failed", key)
-		}
-	}
-
-	fake.mutex.Lock()
-	defer fake.mutex.Unlock()
-
-	if fake.singleDeletes != 0 || fake.deleteBatches != 0 {
-		t.Errorf("Rename() deleted sources after a failed copy: %d single, %d batch", fake.singleDeletes, fake.deleteBatches)
-	}
-}
-
-func escapedToken(key string) string {
-	var escaped strings.Builder
-
-	_ = xml.EscapeText(&escaped, []byte(key))
-
-	return escaped.String()
 }

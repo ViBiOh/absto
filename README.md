@@ -14,8 +14,6 @@ Usage of absto:
         [s3] Storage Object Bucket {ABSTO_OBJECT_BUCKET}
   -objectClass string
         [s3] Storage Object Class {ABSTO_OBJECT_CLASS}
-  -objectConcurrency int
-        [s3] Number of concurrent copy requests when renaming a directory {ABSTO_OBJECT_CONCURRENCY} (default 8)
   -objectEndpoint string
         [s3] Storage Object endpoint {ABSTO_OBJECT_ENDPOINT}
   -objectRegion string

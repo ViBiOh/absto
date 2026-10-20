@@ -24,7 +24,6 @@ type Config struct {
 	StorageClass string
 	UseSSL       bool
 	PartSize     uint64
-	Concurrency  int
 }
 
 func Flags(fs *flag.FlagSet, prefix string, overrides ...flags.Override) *Config {
@@ -46,7 +45,6 @@ func Flags(fs *flag.FlagSet, prefix string, overrides ...flags.Override) *Config
 	flags.New("ObjectClass", "Storage Object Class").Prefix(prefix).DocPrefix("s3").StringVar(fs, &config.StorageClass, "", overrides)
 	flags.New("ObjectSSL", "Use SSL").Prefix(prefix).DocPrefix("s3").BoolVar(fs, &config.UseSSL, true, overrides)
 	flags.New("PartSize", "PartSize configuration").Prefix(prefix).DocPrefix("s3").Uint64Var(fs, &config.PartSize, 5<<20, overrides)
-	flags.New("ObjectConcurrency", "Number of concurrent copy requests when renaming a directory").Prefix(prefix).DocPrefix("s3").IntVar(fs, &config.Concurrency, 8, overrides)
 
 	return &config
 }
@@ -59,8 +57,6 @@ func New(config *Config, tracerProvider trace.TracerProvider) (storage model.Sto
 		if region := strings.TrimSpace(config.Region); len(region) > 0 {
 			options = append(options, s3.WithRegion(region))
 		}
-		options = append(options, s3.WithConcurrency(config.Concurrency))
-
 		if storageClass := strings.TrimSpace(config.StorageClass); len(storageClass) > 0 {
 			options = append(options, s3.WithStorageClass(storageClass))
 		}
