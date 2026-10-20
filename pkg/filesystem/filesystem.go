@@ -98,6 +98,10 @@ func (a Service) stat(name string) (model.Item, error) {
 }
 
 func (a Service) List(_ context.Context, name string) ([]model.Item, error) {
+	if !a.enabled {
+		return nil, model.ErrNotEnabled
+	}
+
 	if err := model.ValidPath(name); err != nil {
 		return nil, err
 	}
@@ -124,6 +128,10 @@ func (a Service) List(_ context.Context, name string) ([]model.Item, error) {
 }
 
 func (a Service) WriteTo(_ context.Context, name string, reader io.Reader, _ model.WriteOpts) error {
+	if !a.enabled {
+		return model.ErrNotEnabled
+	}
+
 	if err := model.ValidPath(name); err != nil {
 		return err
 	}
@@ -153,6 +161,10 @@ func (a Service) WriteTo(_ context.Context, name string, reader io.Reader, _ mod
 }
 
 func (a Service) ReadFrom(_ context.Context, name string) (model.ReadAtSeekCloser, error) {
+	if !a.enabled {
+		return nil, model.ErrNotEnabled
+	}
+
 	if err := model.ValidPath(name); err != nil {
 		return nil, err
 	}
@@ -161,6 +173,10 @@ func (a Service) ReadFrom(_ context.Context, name string) (model.ReadAtSeekClose
 }
 
 func (a Service) UpdateDate(_ context.Context, name string, date time.Time) error {
+	if !a.enabled {
+		return model.ErrNotEnabled
+	}
+
 	if err := model.ValidPath(name); err != nil {
 		return err
 	}
@@ -169,6 +185,10 @@ func (a Service) UpdateDate(_ context.Context, name string, date time.Time) erro
 }
 
 func (a Service) Walk(_ context.Context, name string, walkFn func(model.Item) error) error {
+	if !a.enabled {
+		return model.ErrNotEnabled
+	}
+
 	if err := model.ValidPath(name); err != nil {
 		return err
 	}
@@ -218,6 +238,10 @@ func (a Service) walk(relative, pathname string, info fs.FileInfo, walkFn func(m
 }
 
 func (a Service) Mkdir(_ context.Context, name string, perm os.FileMode) error {
+	if !a.enabled {
+		return model.ErrNotEnabled
+	}
+
 	if err := model.ValidPath(name); err != nil {
 		return err
 	}
@@ -226,6 +250,10 @@ func (a Service) Mkdir(_ context.Context, name string, perm os.FileMode) error {
 }
 
 func (a Service) Rename(ctx context.Context, oldName, newName string) error {
+	if !a.enabled {
+		return model.ErrNotEnabled
+	}
+
 	if err := model.ValidPath(oldName); err != nil {
 		return err
 	}
@@ -260,6 +288,10 @@ func (a Service) Rename(ctx context.Context, oldName, newName string) error {
 }
 
 func (a Service) RemoveAll(_ context.Context, name string) error {
+	if !a.enabled {
+		return model.ErrNotEnabled
+	}
+
 	if err := model.ValidPath(name); err != nil {
 		return err
 	}
