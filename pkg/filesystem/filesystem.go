@@ -10,7 +10,6 @@ import (
 	"path"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 
 	"github.com/ViBiOh/absto/pkg/model"
@@ -275,7 +274,7 @@ func (a Service) ConvertError(err error) error {
 		return nil
 	}
 
-	if errors.Is(err, fs.ErrNotExist) || errors.Is(err, syscall.ENOTDIR) {
+	if errors.Is(err, fs.ErrNotExist) || strings.HasSuffix(err.Error(), "not a directory") {
 		return model.ErrNotExist(err)
 	}
 

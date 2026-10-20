@@ -2,7 +2,6 @@ package s3
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -513,9 +512,7 @@ func (a Service) RemoveAll(ctx context.Context, name string) error {
 }
 
 func IsNotExist(err error) bool {
-	var response minio.ErrorResponse
-
-	return errors.As(err, &response) && response.Code == minio.NoSuchKey
+	return strings.Contains(err.Error(), "The specified key does not exist")
 }
 
 func (a Service) ConvertError(err error) error {

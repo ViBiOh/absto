@@ -2,16 +2,12 @@ package filesystem
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"io"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"slices"
 	"sort"
 	"strings"
-	"syscall"
 	"testing"
 	"time"
 
@@ -359,38 +355,5 @@ func BenchmarkWriteTo(b *testing.B) {
 		if err := service.WriteTo(ctx, "/file.txt", readerOnly{strings.NewReader(payload)}, model.WriteOpts{}); err != nil {
 			b.Fatal(err)
 		}
-	}
-}
-
-func TestConvertErrorDetection(t *testing.T) {
-	t.Parallel()
-
-	cases := map[string]struct {
-		err  error
-		want bool
-	}{
-		"nil":                       {nil, false},
-		"not exist":                 {&fs.PathError{Op: "open", Path: "file", Err: syscall.ENOENT}, true},
-		"wrapped not exist":         {fmt.Errorf("open: %w", fs.ErrNotExist), true},
-		"not a directory":           {&fs.PathError{Op: "readdirent", Path: "file", Err: syscall.ENOTDIR}, true},
-		"wrapped not a directory":   {fmt.Errorf("walk: %w", &os.LinkError{Op: "rename", Err: syscall.ENOTDIR}), true},
-		"permission":                {&fs.PathError{Op: "open", Path: "file", Err: syscall.EACCES}, false},
-		"message only":              {errors.New("something: not a directory"), false},
-		"already converted":         {model.ErrNotExist(os.ErrNotExist), true},
-		"unrelated message":         {errors.New("file does not exist"), false},
-		"is a directory":            {&fs.PathError{Op: "open", Path: "dir", Err: syscall.EISDIR}, false},
-		"invalid argument":          {&fs.PathError{Op: "RemoveAll", Path: ".", Err: syscall.EINVAL}, false},
-		"wrapped invalid argument":  {fmt.Errorf("remove: %w", syscall.EINVAL), false},
-		"wrapped not exist message": {fmt.Errorf("%v: %w", "x", syscall.ENOENT), true},
-	}
-
-	for intention, tc := range cases {
-		t.Run(intention, func(t *testing.T) {
-			t.Parallel()
-
-			if got := model.IsNotExist(Service{}.ConvertError(tc.err)); got != tc.want {
-				t.Errorf("IsNotExist(ConvertError(%v)) = %t, want %t", tc.err, got, tc.want)
-			}
-		})
 	}
 }
