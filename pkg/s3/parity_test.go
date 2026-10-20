@@ -11,12 +11,12 @@ import (
 func TestStorageContract(t *testing.T) {
 	t.Parallel()
 
+	if os.Getenv("ABSTO_TEST_ENABLED") != "true" {
+		return
+	}
+
 	storagetest.Run(t, func(t *testing.T) model.Storage {
 		t.Helper()
-
-		if os.Getenv("ABSTO_TEST_ENABLED") != "true" {
-			return Service{}
-		}
 
 		Endpoint := os.Getenv("ABSTO_TEST_ENDPOINT")
 		AccessKey := os.Getenv("ABSTO_TEST_ACCESS_KEY")
