@@ -1,7 +1,6 @@
 package filesystem
 
 import (
-	"crypto/rand"
 	"errors"
 	"fmt"
 	"io"
@@ -14,8 +13,6 @@ import (
 
 	"github.com/ViBiOh/absto/pkg/model"
 )
-
-const tempFlag = os.O_WRONLY | os.O_CREATE | os.O_EXCL
 
 type writerOnly struct {
 	io.Writer
@@ -106,71 +103,17 @@ func (a Service) getReadableFile(filename string) (model.ReadAtSeekCloser, error
 	return file, nil
 }
 
-func (a Service) createFile(relative string, flags int) (*os.File, error) {
-	file, err := a.root.OpenFile(relative, flags, model.RegularFilePerm)
-	if model.IsNotExist(a.ConvertError(err)) {
-		if err = a.root.MkdirAll(path.Dir(relative), model.DirectoryPerm); err != nil {
-			return nil, a.ConvertError(err)
-		}
-
-		file, err = a.root.OpenFile(relative, flags, model.RegularFilePerm)
+func (a Service) getWritableFile(filename string) (io.WriteCloser, error) {
+	if strings.HasSuffix(filename, "/") {
+		return nil, &fs.PathError{Op: "open", Path: filename, Err: syscall.EISDIR}
 	}
 
+	file, err := a.getFile(filename, model.WriteFlag)
 	if err != nil {
-		return nil, a.ConvertError(err)
+		return nil, err
 	}
 
 	return file, nil
-}
-
-func (a Service) copyTo(writer io.Writer, reader io.Reader) error {
-	buf := bufferPool.Get().(*[]byte)
-	defer bufferPool.Put(buf)
-
-	// *os.File implements io.ReaderFrom, which makes io.CopyBuffer ignore buf and allocate its own.
-	_, err := io.CopyBuffer(writerOnly{Writer: writer}, reader, *buf)
-
-	return a.ConvertError(err)
-}
-
-func (a Service) writeDirect(relative string, reader io.Reader) error {
-	file, err := a.createFile(relative, model.WriteFlag)
-	if err != nil {
-		return err
-	}
-
-	return errors.Join(a.copyTo(file, reader), file.Close())
-}
-
-func (a Service) writeAtomic(relative string, reader io.Reader, existing fs.FileInfo) error {
-	tempName := path.Join(path.Dir(relative), ".absto-"+rand.Text()+".tmp")
-
-	temp, err := a.createFile(tempName, tempFlag)
-	if err != nil {
-		return err
-	}
-
-	if existing != nil {
-		err = temp.Chmod(existing.Mode().Perm())
-	}
-
-	if err == nil {
-		err = a.copyTo(temp, reader)
-	}
-
-	err = errors.Join(err, temp.Close())
-
-	if err == nil {
-		err = a.ConvertError(a.root.Rename(tempName, relative))
-	}
-
-	if err != nil {
-		if removeErr := a.root.Remove(tempName); removeErr != nil && !errors.Is(removeErr, fs.ErrNotExist) {
-			err = errors.Join(err, removeErr)
-		}
-	}
-
-	return err
 }
 
 func getMode(name string) os.FileMode {
