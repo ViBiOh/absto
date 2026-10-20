@@ -27,10 +27,9 @@ var bufferPool = sync.Pool{
 }
 
 type Service struct {
-	ignoreFn      func(model.Item) bool
-	root          *os.Root
-	rootDirectory string
-	rootDirname   string
+	ignoreFn    func(model.Item) bool
+	root        *os.Root
+	rootDirname string
 }
 
 func New(directory string) (Service, error) {
@@ -55,14 +54,13 @@ func New(directory string) (Service, error) {
 	}
 
 	return Service{
-		root:          root,
-		rootDirectory: rootDirectory,
-		rootDirname:   info.Name(),
+		root:        root,
+		rootDirname: info.Name(),
 	}, nil
 }
 
 func (a Service) Enabled() bool {
-	return len(a.rootDirectory) != 0
+	return a.root != nil
 }
 
 func (a Service) Name() string {
@@ -76,11 +74,11 @@ func (a Service) WithIgnoreFn(ignoreFn func(model.Item) bool) model.Storage {
 }
 
 func (a Service) Path(name string) string {
-	if strings.HasPrefix(name, "/") {
-		return a.rootDirectory + name
+	if !a.Enabled() {
+		return ""
 	}
 
-	return a.rootDirectory + "/" + name
+	return path.Join(a.root.Name(), name)
 }
 
 func (a Service) Stat(_ context.Context, name string) (model.Item, error) {
