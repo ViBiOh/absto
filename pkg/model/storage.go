@@ -34,12 +34,12 @@ type File interface {
 
 type Storage interface {
 	Stat(ctx context.Context, name string) (Item, error)
-	Mkdir(ctx context.Context, name string, perm os.FileMode) error
+	Mkdir(ctx context.Context, name string) error
 	Rename(ctx context.Context, oldName, newName string) error
 	RemoveAll(ctx context.Context, name string) error
 
 	Name() string
-	WithIgnoreFn(ignoreFn func(Item) bool) Storage
+	WithIgnoreFn(func(Item) bool) Storage
 
 	List(ctx context.Context, name string) ([]Item, error)
 	WriteTo(ctx context.Context, name string, reader io.Reader, opts WriteOpts) error

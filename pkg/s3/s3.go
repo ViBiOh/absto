@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"os"
 	"slices"
 	"strings"
 	"syscall"
@@ -106,59 +105,37 @@ func (a Service) Stat(ctx context.Context, pathname string) (model.Item, error) 
 		return rootItem(), nil
 	}
 
-	if !strings.HasSuffix(realPathname, "/") {
-		info, err := a.client.StatObject(ctx, a.bucket, realPathname, minio.GetObjectOptions{})
-		if err == nil {
-			return convertToItem(info), nil
-		}
-
-		if !IsNotExist(err) {
-			return model.Item{}, a.ConvertError(fmt.Errorf("stat object: %w", err))
-		}
-	}
-
-	dirname := model.Dirname(realPathname)
-
-	info, err := a.client.StatObject(ctx, a.bucket, dirname, minio.GetObjectOptions{})
+	info, err := a.client.StatObject(ctx, a.bucket, realPathname, minio.GetObjectOptions{})
 	if err == nil {
 		return convertToItem(info), nil
 	}
 
 	if !IsNotExist(err) {
-		return model.Item{}, a.ConvertError(fmt.Errorf("stat object: %w", err))
-	}
-
-	exists, err := a.dirExists(ctx, dirname)
-	if err != nil {
 		return model.Item{}, err
 	}
 
-	if !exists {
-		return model.Item{}, notExist()
-	}
-
-	return convertToItem(minio.ObjectInfo{Key: dirname}), nil
+	return a.statDir(ctx, model.Dirname(realPathname))
 }
 
-func (a Service) dirExists(ctx context.Context, realPathname string) (bool, error) {
+func (a Service) statDir(ctx context.Context, name string) (model.Item, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	objectsCh := a.client.ListObjects(ctx, a.bucket, minio.ListObjectsOptions{
-		Prefix:  realPathname,
+	objects := a.client.ListObjects(ctx, a.bucket, minio.ListObjectsOptions{
+		Prefix:  name,
 		MaxKeys: 1,
 	})
 
-	object, ok := <-objectsCh
+	result, ok := <-objects
 	if !ok {
-		return false, nil
+		return model.Item{}, notExist()
 	}
 
-	if object.Err != nil {
-		return false, a.ConvertError(fmt.Errorf("list objects: %w", object.Err))
+	if result.Err != nil {
+		return model.Item{}, a.ConvertError(result.Err)
 	}
 
-	return true, nil
+	return convertToItem(minio.ObjectInfo{Key: name}), nil
 }
 
 func (a Service) List(ctx context.Context, pathname string) ([]model.Item, error) {
@@ -179,7 +156,8 @@ func (a Service) List(ctx context.Context, pathname string) ([]model.Item, error
 	}
 
 	objectsCh := a.client.ListObjects(ctx, a.bucket, minio.ListObjectsOptions{
-		Prefix: prefix,
+		Prefix:   prefix,
+		Unsorted: true,
 	})
 
 	var objects []minio.ObjectInfo
@@ -413,7 +391,7 @@ func (a Service) walkObjects(ctx context.Context, pathname string, objectFn func
 	return found, err
 }
 
-func (a Service) Mkdir(ctx context.Context, name string, _ os.FileMode) error {
+func (a Service) Mkdir(ctx context.Context, name string) error {
 	if !a.enabled {
 		return model.ErrNotEnabled
 	}

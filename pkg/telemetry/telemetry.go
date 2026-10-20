@@ -4,7 +4,6 @@ import (
 	"context"
 	"io"
 	"io/fs"
-	"os"
 	"time"
 
 	"github.com/ViBiOh/absto/pkg/model"
@@ -115,11 +114,11 @@ func (a Service) Walk(ctx context.Context, name string, walkFn func(model.Item) 
 	return err
 }
 
-func (a Service) Mkdir(ctx context.Context, name string, perm os.FileMode) error {
+func (a Service) Mkdir(ctx context.Context, name string) error {
 	ctx, span := a.tracer.Start(ctx, "mkdir", trace.WithAttributes(attribute.String("name", name)))
 	defer span.End()
 
-	err := a.storage.Mkdir(ctx, name, perm)
+	err := a.storage.Mkdir(ctx, name)
 	recordError(span, err)
 
 	return err

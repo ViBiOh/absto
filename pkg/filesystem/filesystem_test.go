@@ -161,7 +161,7 @@ func TestSymlinkEscape(t *testing.T) {
 			return service.WriteTo(ctx, "/"+link+"/secret.txt", strings.NewReader("pwned"), model.WriteOpts{})
 		},
 		"mkdir": func(link string) error {
-			return service.Mkdir(ctx, "/"+link+"/created", model.DirectoryPerm)
+			return service.Mkdir(ctx, "/"+link+"/created")
 		},
 		"remove file": func(link string) error {
 			return service.RemoveAll(ctx, "/"+link+"/secret.txt")

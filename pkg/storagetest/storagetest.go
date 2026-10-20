@@ -4,7 +4,6 @@ import (
 	"context"
 	"io"
 	"slices"
-	"strconv"
 	"strings"
 	"testing"
 
@@ -16,20 +15,20 @@ type Factory func(t *testing.T) model.Storage
 func Run(t *testing.T, factory Factory) {
 	t.Helper()
 
-	suites := []func(*testing.T, Factory){
-		testStat,
-		testList,
-		testWalk,
-		testIgnoreFn,
-		testMkdir,
-		testWriteTo,
-		testReadFrom,
-		testRename,
-		testRemoveAll,
+	suites := map[string]func(*testing.T, Factory){
+		"Stat":      testStat,
+		"List":      testList,
+		"Walk":      testWalk,
+		"IgnoreFn":  testIgnoreFn,
+		"Mkdir":     testMkdir,
+		"WriteTo":   testWriteTo,
+		"ReadFrom":  testReadFrom,
+		"Rename":    testRename,
+		"RemoveAll": testRemoveAll,
 	}
 
-	for index, suite := range suites {
-		t.Run("index "+strconv.Itoa(index), func(t *testing.T) {
+	for name, suite := range suites {
+		t.Run(name, func(t *testing.T) {
 			suite(t, factory)
 		})
 	}
@@ -58,7 +57,7 @@ func seed(t *testing.T, factory Factory) model.Storage {
 		}
 	}
 
-	if err := storage.Mkdir(ctx, "/empty", model.DirectoryPerm); err != nil {
+	if err := storage.Mkdir(ctx, "/empty"); err != nil {
 		t.Fatalf("seed Mkdir() error: %s", err)
 	}
 
@@ -351,7 +350,7 @@ func testMkdir(t *testing.T, factory Factory) {
 		storage := seed(t, factory)
 
 		for range 2 {
-			if err := storage.Mkdir(ctx, "/a/b/c", model.DirectoryPerm); err != nil {
+			if err := storage.Mkdir(ctx, "/a/b/c"); err != nil {
 				t.Fatalf("Mkdir() unexpected error: %s", err)
 			}
 		}
@@ -374,7 +373,7 @@ func testMkdir(t *testing.T, factory Factory) {
 	t.Run("existing implicit directory", func(t *testing.T) {
 		storage := seed(t, factory)
 
-		if err := storage.Mkdir(ctx, "/photo/sub", model.DirectoryPerm); err != nil {
+		if err := storage.Mkdir(ctx, "/photo/sub"); err != nil {
 			t.Fatalf("Mkdir() unexpected error: %s", err)
 		}
 
@@ -389,7 +388,7 @@ func testMkdir(t *testing.T, factory Factory) {
 	t.Run("file in the way", func(t *testing.T) {
 		storage := seed(t, factory)
 
-		if err := storage.Mkdir(ctx, "/photo.jpg", model.DirectoryPerm); err == nil {
+		if err := storage.Mkdir(ctx, "/photo.jpg"); err == nil {
 			t.Error("Mkdir() want an error when a file has the same name")
 		}
 	})
@@ -398,7 +397,7 @@ func testMkdir(t *testing.T, factory Factory) {
 		t.Run("through a file "+name, func(t *testing.T) {
 			storage := seed(t, factory)
 
-			err := storage.Mkdir(ctx, name, model.DirectoryPerm)
+			err := storage.Mkdir(ctx, name)
 			if err == nil {
 				t.Fatal("Mkdir() want an error when a file is in the way")
 			}

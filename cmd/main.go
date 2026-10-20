@@ -28,39 +28,38 @@ func main() {
 		log.Fatal(err)
 	}
 
-	log.Println("Creating directory `/test`")
-	log.Println(storage.Mkdir(ctx, "/test", model.DirectoryPerm))
-
 	log.Println("Creating a file `/test/first.txt`")
 	log.Println(storage.WriteTo(ctx, "/test/first.txt", strings.NewReader("Streamed content"), model.WriteOpts{}))
 
-	log.Println("Creating a file `/test/second.txt`")
-	log.Println(storage.WriteTo(ctx, "/test/second.txt", strings.NewReader("Fixed size content"), model.WriteOpts{Size: 18}))
+	log.Println("Creating a file `/test/sub/second.txt`")
+	log.Println(storage.WriteTo(ctx, "/test/sub/second.txt", strings.NewReader("Fixed size content"), model.WriteOpts{Size: 18}))
 
-	log.Println("Open file `/test/third.txt`")
+	log.Println("Renaming `/test` to `/renamed`")
+	log.Println(storage.Rename(ctx, "/test", "/renamed"))
 
-	log.Println("Renaming `/test/` to `/renamed/`")
-	log.Println(storage.Rename(ctx, "/test/", "/renamed/"))
+	log.Println("Walking `/renamed`")
+	err = storage.Walk(ctx, "/renamed", func(item model.Item) error {
+		if item.IsDir() {
+			return nil
+		}
 
-	log.Println("Listing `/renamed/`")
-	items, err := storage.List(ctx, "/renamed/")
-	log.Println(err)
-
-	for _, item := range items {
 		log.Println("Reading " + item.Pathname)
 		reader, err := storage.ReadFrom(ctx, item.Pathname)
 		log.Println(err)
 
 		content, err := io.ReadAll(reader)
 		log.Printf("`%s` : %s\n", content, err)
-	}
 
-	if len(items) != 3 {
-		log.Println("not expected file in bucket")
-	}
+		return nil
+	})
+	log.Println(err)
 
+	log.Println("Rename first to new")
 	log.Println(storage.Rename(ctx, "/renamed/first.txt", "/new/test.txt"))
 
+	log.Println("Remove /renamed")
 	log.Println(storage.RemoveAll(ctx, "/renamed"))
+
+	log.Println("Remove /new")
 	log.Println(storage.RemoveAll(ctx, "/new"))
 }

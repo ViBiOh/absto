@@ -237,7 +237,7 @@ func (a Service) walk(relative, pathname string, info fs.FileInfo, walkFn func(m
 	return nil
 }
 
-func (a Service) Mkdir(_ context.Context, name string, perm os.FileMode) error {
+func (a Service) Mkdir(_ context.Context, name string) error {
 	if !a.enabled {
 		return model.ErrNotEnabled
 	}
@@ -246,7 +246,7 @@ func (a Service) Mkdir(_ context.Context, name string, perm os.FileMode) error {
 		return err
 	}
 
-	return a.ConvertError(a.root.MkdirAll(a.relative(name), perm))
+	return a.ConvertError(a.root.MkdirAll(a.relative(name), model.DirectoryPerm))
 }
 
 func (a Service) Rename(ctx context.Context, oldName, newName string) error {
@@ -276,7 +276,7 @@ func (a Service) Rename(ctx context.Context, oldName, newName string) error {
 	newDirPath := path.Dir(strings.TrimSuffix(newName, "/"))
 	if _, err := a.stat(newDirPath); err != nil {
 		if model.IsNotExist(err) {
-			if err = a.Mkdir(ctx, newDirPath, model.DirectoryPerm); err != nil {
+			if err = a.Mkdir(ctx, newDirPath); err != nil {
 				return a.ConvertError(err)
 			}
 		} else {
@@ -296,15 +296,7 @@ func (a Service) RemoveAll(_ context.Context, name string) error {
 		return err
 	}
 
-	relativeName := a.relative(name)
-
-	if strings.HasSuffix(name, "/") {
-		if info, err := a.root.Stat(relativeName); err == nil && !info.IsDir() {
-			return nil
-		}
-	}
-
-	return a.ConvertError(a.root.RemoveAll(relativeName))
+	return a.ConvertError(a.root.RemoveAll(a.relative(name)))
 }
 
 func (a Service) ConvertError(err error) error {
