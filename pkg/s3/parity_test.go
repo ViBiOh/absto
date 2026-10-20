@@ -1,6 +1,7 @@
 package s3
 
 import (
+	"os"
 	"testing"
 
 	"github.com/ViBiOh/absto/pkg/model"
@@ -13,7 +14,16 @@ func TestStorageContract(t *testing.T) {
 	storagetest.Run(t, func(t *testing.T) model.Storage {
 		t.Helper()
 
-		service, _ := newTestService(t, false)
+		if os.Getenv("ABSTO_TEST_ENABLED") != "true" {
+			return Service{}
+		}
+
+		Endpoint := os.Getenv("ABSTO_TEST_ENDPOINT")
+		AccessKey := os.Getenv("ABSTO_TEST_ACCESS_KEY")
+		SecretAccess := os.Getenv("ABSTO_TEST_SECRET_ACCESS")
+		Bucket := os.Getenv("ABSTO_TEST_BUCKET")
+
+		service, _ := New(Endpoint, AccessKey, SecretAccess, Bucket, true, 5<<20)
 
 		return service
 	})

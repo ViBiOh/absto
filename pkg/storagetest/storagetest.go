@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -15,22 +16,20 @@ type Factory func(t *testing.T) model.Storage
 func Run(t *testing.T, factory Factory) {
 	t.Helper()
 
-	suites := map[string]func(*testing.T, Factory){
-		"Stat":      testStat,
-		"List":      testList,
-		"Walk":      testWalk,
-		"IgnoreFn":  testIgnoreFn,
-		"WriteTo":   testWriteTo,
-		"ReadFrom":  testReadFrom,
-		"Rename":    testRename,
-		"RemoveAll": testRemoveAll,
-		"Mkdir":     testMkdir,
+	suites := []func(*testing.T, Factory){
+		testStat,
+		testList,
+		testWalk,
+		testIgnoreFn,
+		testMkdir,
+		testWriteTo,
+		testReadFrom,
+		testRename,
+		testRemoveAll,
 	}
 
-	for name, suite := range suites {
-		t.Run(name, func(t *testing.T) {
-			t.Parallel()
-
+	for index, suite := range suites {
+		t.Run("index "+strconv.Itoa(index), func(t *testing.T) {
 			suite(t, factory)
 		})
 	}
@@ -38,6 +37,10 @@ func Run(t *testing.T, factory Factory) {
 
 func seed(t *testing.T, factory Factory) model.Storage {
 	t.Helper()
+
+	cleanup := clean(t, factory)
+	cleanup()
+	t.Cleanup(cleanup)
 
 	storage := factory(t)
 	ctx := context.Background()
@@ -60,6 +63,24 @@ func seed(t *testing.T, factory Factory) model.Storage {
 	}
 
 	return storage
+}
+
+func clean(t *testing.T, factory Factory) func() {
+	return func() {
+		ctx := context.Background()
+		storage := factory(t)
+
+		items, err := storage.List(ctx, "/")
+		if err != nil {
+			t.Fatalf("clean List error: %s", err)
+		}
+
+		for _, item := range items {
+			if err := storage.RemoveAll(ctx, item.Pathname); err != nil {
+				t.Fatalf("clean RemoveAll(%s) error: %s", item.Pathname, err)
+			}
+		}
+	}
 }
 
 func pathnames(items []model.Item) []string {
@@ -122,8 +143,6 @@ func testStat(t *testing.T, factory Factory) {
 
 	for intention, tc := range cases {
 		t.Run(intention, func(t *testing.T) {
-			t.Parallel()
-
 			item, err := storage.Stat(context.Background(), tc.name)
 			if err != nil {
 				t.Fatalf("Stat() unexpected error: %s", err)
@@ -140,8 +159,6 @@ func testStat(t *testing.T, factory Factory) {
 	}
 
 	t.Run("file size and extension", func(t *testing.T) {
-		t.Parallel()
-
 		item, err := storage.Stat(context.Background(), "/photo.jpg")
 		if err != nil {
 			t.Fatal(err)
@@ -153,8 +170,6 @@ func testStat(t *testing.T, factory Factory) {
 	})
 
 	t.Run("root", func(t *testing.T) {
-		t.Parallel()
-
 		item, err := storage.Stat(context.Background(), "/")
 		if err != nil {
 			t.Fatal(err)
@@ -167,16 +182,12 @@ func testStat(t *testing.T, factory Factory) {
 
 	for _, name := range []string{"/missing", "/missing/", "/photo.jpg/", "/photo/missing.jpg", "/photo.jpg/child"} {
 		t.Run("not exist "+name, func(t *testing.T) {
-			t.Parallel()
-
 			_, err := storage.Stat(context.Background(), name)
 			assertNotExist(t, err)
 		})
 	}
 
 	t.Run("relative path", func(t *testing.T) {
-		t.Parallel()
-
 		if _, err := storage.Stat(context.Background(), "/photo/../photos"); err != model.ErrRelativePath {
 			t.Errorf("Stat() error = %v, want %v", err, model.ErrRelativePath)
 		}
@@ -200,8 +211,6 @@ func testList(t *testing.T, factory Factory) {
 
 	for name, want := range cases {
 		t.Run("list `"+name+"`", func(t *testing.T) {
-			t.Parallel()
-
 			items, err := storage.List(context.Background(), name)
 			if err != nil {
 				t.Fatalf("List() unexpected error: %s", err)
@@ -213,8 +222,6 @@ func testList(t *testing.T, factory Factory) {
 
 	for _, name := range []string{"/missing", "/missing/", "/photo.jpg", "/photo.jpg/", "/photo/a.jpg", "/pho"} {
 		t.Run("not exist "+name, func(t *testing.T) {
-			t.Parallel()
-
 			_, err := storage.List(context.Background(), name)
 			assertNotExist(t, err)
 		})
@@ -244,8 +251,6 @@ func testWalk(t *testing.T, factory Factory) {
 
 	for name, want := range cases {
 		t.Run("walk `"+name+"`", func(t *testing.T) {
-			t.Parallel()
-
 			got, err := walkAll(storage, name)
 			if err != nil {
 				t.Fatalf("Walk() unexpected error: %s", err)
@@ -257,16 +262,12 @@ func testWalk(t *testing.T, factory Factory) {
 
 	for _, name := range []string{"/missing", "/missing/", "/pho", "/photo.jp"} {
 		t.Run("not exist "+name, func(t *testing.T) {
-			t.Parallel()
-
 			_, err := walkAll(storage, name)
 			assertNotExist(t, err)
 		})
 	}
 
 	t.Run("callback error stops the walk", func(t *testing.T) {
-		t.Parallel()
-
 		var visited int
 
 		err := storage.Walk(context.Background(), "/", func(model.Item) error {
@@ -284,8 +285,6 @@ func testWalk(t *testing.T, factory Factory) {
 	})
 
 	t.Run("relative path", func(t *testing.T) {
-		t.Parallel()
-
 		if _, err := walkAll(storage, "/../photo"); err != model.ErrRelativePath {
 			t.Errorf("Walk() error = %v, want %v", err, model.ErrRelativePath)
 		}
@@ -300,8 +299,6 @@ func testIgnoreFn(t *testing.T, factory Factory) {
 	})
 
 	t.Run("list", func(t *testing.T) {
-		t.Parallel()
-
 		items, err := ignoring.List(context.Background(), "/photo")
 		if err != nil {
 			t.Fatal(err)
@@ -311,8 +308,6 @@ func testIgnoreFn(t *testing.T, factory Factory) {
 	})
 
 	t.Run("walk", func(t *testing.T) {
-		t.Parallel()
-
 		got, err := walkAll(ignoring, "/photo")
 		if err != nil {
 			t.Fatal(err)
@@ -322,8 +317,6 @@ func testIgnoreFn(t *testing.T, factory Factory) {
 	})
 
 	t.Run("mutations act on everything", func(t *testing.T) {
-		t.Parallel()
-
 		mutable := seed(t, factory)
 		mutableIgnoring := mutable.WithIgnoreFn(func(item model.Item) bool {
 			return item.Name() == "sub"
@@ -351,13 +344,75 @@ func testIgnoreFn(t *testing.T, factory Factory) {
 	})
 }
 
+func testMkdir(t *testing.T, factory Factory) {
+	ctx := context.Background()
+
+	t.Run("nested and idempotent", func(t *testing.T) {
+		storage := seed(t, factory)
+
+		for range 2 {
+			if err := storage.Mkdir(ctx, "/a/b/c", model.DirectoryPerm); err != nil {
+				t.Fatalf("Mkdir() unexpected error: %s", err)
+			}
+		}
+
+		for _, name := range []string{"/a", "/a/b", "/a/b/c"} {
+			item, err := storage.Stat(ctx, name)
+			if err != nil || !item.IsDir() {
+				t.Errorf("Stat(%s) = %+v, %v, want a directory", name, item, err)
+			}
+		}
+
+		items, err := storage.List(ctx, "/a/b/c")
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		assertPathnames(t, pathnames(items), nil)
+	})
+
+	t.Run("existing implicit directory", func(t *testing.T) {
+		storage := seed(t, factory)
+
+		if err := storage.Mkdir(ctx, "/photo/sub", model.DirectoryPerm); err != nil {
+			t.Fatalf("Mkdir() unexpected error: %s", err)
+		}
+
+		items, err := storage.List(ctx, "/photo/sub")
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		assertPathnames(t, pathnames(items), []string{"/photo/sub/b.jpg"})
+	})
+
+	t.Run("file in the way", func(t *testing.T) {
+		storage := seed(t, factory)
+
+		if err := storage.Mkdir(ctx, "/photo.jpg", model.DirectoryPerm); err == nil {
+			t.Error("Mkdir() want an error when a file has the same name")
+		}
+	})
+
+	for _, name := range []string{"/photo.jpg/child", "/photo/a.jpg/child"} {
+		t.Run("through a file "+name, func(t *testing.T) {
+			storage := seed(t, factory)
+
+			err := storage.Mkdir(ctx, name, model.DirectoryPerm)
+			if err == nil {
+				t.Fatal("Mkdir() want an error when a file is in the way")
+			}
+
+			assertNotExist(t, err)
+		})
+	}
+}
+
 func testWriteTo(t *testing.T, factory Factory) {
 	storage := seed(t, factory)
 	ctx := context.Background()
 
 	t.Run("creates missing parents", func(t *testing.T) {
-		t.Parallel()
-
 		if err := storage.WriteTo(ctx, "/new/deep/file.txt", strings.NewReader("content"), model.WriteOpts{}); err != nil {
 			t.Fatalf("WriteTo() unexpected error: %s", err)
 		}
@@ -378,8 +433,6 @@ func testWriteTo(t *testing.T, factory Factory) {
 	})
 
 	t.Run("overwrites", func(t *testing.T) {
-		t.Parallel()
-
 		if err := storage.WriteTo(ctx, "/photo.jpg", strings.NewReader("x"), model.WriteOpts{}); err != nil {
 			t.Fatal(err)
 		}
@@ -402,16 +455,12 @@ func testWriteTo(t *testing.T, factory Factory) {
 	})
 
 	t.Run("directory name", func(t *testing.T) {
-		t.Parallel()
-
 		if err := storage.WriteTo(ctx, "/photo/", strings.NewReader("x"), model.WriteOpts{}); err == nil {
 			t.Error("WriteTo() want an error for a name ending with a slash")
 		}
 	})
 
 	t.Run("relative path", func(t *testing.T) {
-		t.Parallel()
-
 		if err := storage.WriteTo(ctx, "/../x", strings.NewReader("x"), model.WriteOpts{}); err != model.ErrRelativePath {
 			t.Errorf("WriteTo() error = %v, want %v", err, model.ErrRelativePath)
 		}
@@ -423,8 +472,6 @@ func testReadFrom(t *testing.T, factory Factory) {
 	ctx := context.Background()
 
 	t.Run("content", func(t *testing.T) {
-		t.Parallel()
-
 		reader, err := storage.ReadFrom(ctx, "/photo/sub/b.jpg")
 		if err != nil {
 			t.Fatal(err)
@@ -444,8 +491,6 @@ func testReadFrom(t *testing.T, factory Factory) {
 
 	for _, name := range []string{"/missing", "/photo/missing.jpg", "/photos/c.jpg/child"} {
 		t.Run("not exist "+name, func(t *testing.T) {
-			t.Parallel()
-
 			reader, err := storage.ReadFrom(ctx, name)
 			if err == nil {
 				_ = reader.Close()
@@ -469,8 +514,6 @@ func testRename(t *testing.T, factory Factory) {
 		{"photo", "img"},
 	} {
 		t.Run("directory "+names[0]+" to "+names[1], func(t *testing.T) {
-			t.Parallel()
-
 			storage := seed(t, factory)
 
 			if err := storage.Rename(ctx, names[0], names[1]); err != nil {
@@ -496,8 +539,6 @@ func testRename(t *testing.T, factory Factory) {
 	}
 
 	t.Run("file with new parents", func(t *testing.T) {
-		t.Parallel()
-
 		storage := seed(t, factory)
 
 		if err := storage.Rename(ctx, "/photo.jpg", "/moved/deep/p.jpg"); err != nil {
@@ -513,8 +554,6 @@ func testRename(t *testing.T, factory Factory) {
 	})
 
 	t.Run("missing source", func(t *testing.T) {
-		t.Parallel()
-
 		storage := seed(t, factory)
 
 		assertNotExist(t, storage.Rename(ctx, "/missing", "/other"))
@@ -526,8 +565,6 @@ func testRename(t *testing.T, factory Factory) {
 	})
 
 	t.Run("into itself", func(t *testing.T) {
-		t.Parallel()
-
 		storage := seed(t, factory)
 
 		if err := storage.Rename(ctx, "/photo", "/photo/inner"); err == nil {
@@ -540,8 +577,6 @@ func testRename(t *testing.T, factory Factory) {
 	})
 
 	t.Run("same path", func(t *testing.T) {
-		t.Parallel()
-
 		storage := seed(t, factory)
 
 		if err := storage.Rename(ctx, "/photo", "/photo"); err != nil {
@@ -554,8 +589,6 @@ func testRename(t *testing.T, factory Factory) {
 	})
 
 	t.Run("root", func(t *testing.T) {
-		t.Parallel()
-
 		storage := seed(t, factory)
 
 		if err := storage.Rename(ctx, "/", "/other"); err == nil {
@@ -569,8 +602,6 @@ func testRemoveAll(t *testing.T, factory Factory) {
 
 	for _, name := range []string{"/photo", "/photo/"} {
 		t.Run("directory "+name, func(t *testing.T) {
-			t.Parallel()
-
 			storage := seed(t, factory)
 
 			if err := storage.RemoveAll(ctx, name); err != nil {
@@ -590,8 +621,6 @@ func testRemoveAll(t *testing.T, factory Factory) {
 	}
 
 	t.Run("file", func(t *testing.T) {
-		t.Parallel()
-
 		storage := seed(t, factory)
 
 		if err := storage.RemoveAll(ctx, "/photo.jpg"); err != nil {
@@ -607,8 +636,6 @@ func testRemoveAll(t *testing.T, factory Factory) {
 	})
 
 	t.Run("missing", func(t *testing.T) {
-		t.Parallel()
-
 		storage := seed(t, factory)
 
 		for _, name := range []string{"/missing", "/pho", "/photo.jp"} {
@@ -628,8 +655,6 @@ func testRemoveAll(t *testing.T, factory Factory) {
 	})
 
 	t.Run("root", func(t *testing.T) {
-		t.Parallel()
-
 		storage := seed(t, factory)
 
 		for _, name := range []string{"/", ""} {
@@ -642,76 +667,4 @@ func testRemoveAll(t *testing.T, factory Factory) {
 			t.Errorf("tree damaged: %s", err)
 		}
 	})
-}
-
-func testMkdir(t *testing.T, factory Factory) {
-	ctx := context.Background()
-
-	t.Run("nested and idempotent", func(t *testing.T) {
-		t.Parallel()
-
-		storage := seed(t, factory)
-
-		for range 2 {
-			if err := storage.Mkdir(ctx, "/a/b/c", model.DirectoryPerm); err != nil {
-				t.Fatalf("Mkdir() unexpected error: %s", err)
-			}
-		}
-
-		for _, name := range []string{"/a", "/a/b", "/a/b/c"} {
-			item, err := storage.Stat(ctx, name)
-			if err != nil || !item.IsDir() {
-				t.Errorf("Stat(%s) = %+v, %v, want a directory", name, item, err)
-			}
-		}
-
-		items, err := storage.List(ctx, "/a/b/c")
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		assertPathnames(t, pathnames(items), nil)
-	})
-
-	t.Run("existing implicit directory", func(t *testing.T) {
-		t.Parallel()
-
-		storage := seed(t, factory)
-
-		if err := storage.Mkdir(ctx, "/photo/sub", model.DirectoryPerm); err != nil {
-			t.Fatalf("Mkdir() unexpected error: %s", err)
-		}
-
-		items, err := storage.List(ctx, "/photo/sub")
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		assertPathnames(t, pathnames(items), []string{"/photo/sub/b.jpg"})
-	})
-
-	t.Run("file in the way", func(t *testing.T) {
-		t.Parallel()
-
-		storage := seed(t, factory)
-
-		if err := storage.Mkdir(ctx, "/photo.jpg", model.DirectoryPerm); err == nil {
-			t.Error("Mkdir() want an error when a file has the same name")
-		}
-	})
-
-	for _, name := range []string{"/photo.jpg/child", "/photo/a.jpg/child"} {
-		t.Run("through a file "+name, func(t *testing.T) {
-			t.Parallel()
-
-			storage := seed(t, factory)
-
-			err := storage.Mkdir(ctx, name, model.DirectoryPerm)
-			if err == nil {
-				t.Fatal("Mkdir() want an error when a file is in the way")
-			}
-
-			assertNotExist(t, err)
-		})
-	}
 }
