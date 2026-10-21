@@ -2,6 +2,7 @@ package s3
 
 import (
 	"errors"
+	"io/fs"
 	"path"
 	"strings"
 
@@ -11,19 +12,60 @@ import (
 
 var errStopWalk = errors.New("stop walk")
 
-func relative(name string) string {
-	return strings.TrimPrefix(name, "/")
+func (s Service) ConvertError(err error) error {
+	if err == nil {
+		return nil
+	}
+
+	if IsNotExist(err) {
+		return model.ErrNotExist(err)
+	}
+
+	return err
 }
 
-func convertToItem(info minio.ObjectInfo) model.Item {
-	name := path.Base(info.Key)
-	pathname := "/" + strings.TrimSuffix(info.Key, "/")
+func IsNotExist(err error) bool {
+	return strings.Contains(err.Error(), "The specified key does not exist")
+}
+
+func notExist() error {
+	return model.ErrNotExist(fs.ErrNotExist)
+}
+
+func (s Service) relative(name string) string {
+	if len(name) != 0 && name[0] == '/' {
+		name = name[1:]
+	}
+
+	if len(s.prefix) == 0 {
+		return name
+	}
+
+	return s.prefix + "/" + name
+}
+
+func (s Service) isRoot(key string) bool {
+	return strings.Trim(key, "/") == s.prefix
+}
+
+func dirKey(key string) string {
+	if len(key) == 0 {
+		return key
+	}
+
+	return model.Dirname(key)
+}
+
+func (s Service) convertToItem(info minio.ObjectInfo) model.Item {
+	relative := strings.TrimPrefix(info.Key, s.prefix)
+	name := path.Base(relative)
+	pathname := path.Clean("/" + strings.TrimSuffix(relative, "/"))
 
 	item := model.Item{
 		ID:         model.ID(pathname),
 		NameValue:  name,
 		Pathname:   pathname,
-		IsDirValue: strings.HasSuffix(info.Key, "/"),
+		IsDirValue: strings.HasSuffix(relative, "/"),
 		Date:       info.LastModified,
 	}
 

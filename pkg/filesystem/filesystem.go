@@ -62,18 +62,18 @@ func New(directory string) (Service, error) {
 	}, nil
 }
 
-func (a Service) Name() string {
+func (s Service) Name() string {
 	return Name
 }
 
-func (a Service) WithIgnoreFn(ignoreFn func(model.Item) bool) model.Storage {
-	a.ignoreFn = ignoreFn
+func (s Service) WithIgnoreFn(ignoreFn func(model.Item) bool) model.Storage {
+	s.ignoreFn = ignoreFn
 
-	return a
+	return s
 }
 
-func (a Service) Stat(_ context.Context, name string) (model.Item, error) {
-	if !a.enabled {
+func (s Service) Stat(_ context.Context, name string) (model.Item, error) {
+	if !s.enabled {
 		return model.Item{}, model.ErrNotEnabled
 	}
 
@@ -81,24 +81,24 @@ func (a Service) Stat(_ context.Context, name string) (model.Item, error) {
 		return model.Item{}, err
 	}
 
-	return a.stat(name)
+	return s.stat(name)
 }
 
-func (a Service) stat(name string) (model.Item, error) {
-	info, err := a.root.Stat(a.relative(name))
+func (s Service) stat(name string) (model.Item, error) {
+	info, err := s.root.Stat(s.relative(name))
 	if err != nil {
-		return model.Item{}, a.ConvertError(err)
+		return model.Item{}, s.ConvertError(err)
 	}
 
 	if strings.HasSuffix(name, "/") && !info.IsDir() {
-		return model.Item{}, a.ConvertError(&fs.PathError{Op: "stat", Path: name, Err: syscall.ENOTDIR})
+		return model.Item{}, s.ConvertError(&fs.PathError{Op: "stat", Path: name, Err: syscall.ENOTDIR})
 	}
 
-	return a.newItem(a.pathname(name), info), nil
+	return s.newItem(s.pathname(name), info), nil
 }
 
-func (a Service) List(_ context.Context, name string) ([]model.Item, error) {
-	if !a.enabled {
+func (s Service) List(_ context.Context, name string) ([]model.Item, error) {
+	if !s.enabled {
 		return nil, model.ErrNotEnabled
 	}
 
@@ -106,18 +106,18 @@ func (a Service) List(_ context.Context, name string) ([]model.Item, error) {
 		return nil, err
 	}
 
-	infos, err := a.readDir(a.relative(name))
+	infos, err := s.readDir(s.relative(name))
 	if err != nil {
-		return nil, a.ConvertError(err)
+		return nil, s.ConvertError(err)
 	}
 
-	dirName := a.pathname(name)
+	dirName := s.pathname(name)
 
 	items := make([]model.Item, 0, len(infos))
 
 	for _, info := range infos {
-		item := a.newItem(path.Join(dirName, info.Name()), info)
-		if a.ignoreFn != nil && a.ignoreFn(item) {
+		item := s.newItem(path.Join(dirName, info.Name()), info)
+		if s.ignoreFn != nil && s.ignoreFn(item) {
 			continue
 		}
 
@@ -127,8 +127,8 @@ func (a Service) List(_ context.Context, name string) ([]model.Item, error) {
 	return items, nil
 }
 
-func (a Service) WriteTo(_ context.Context, name string, reader io.Reader, _ model.WriteOpts) error {
-	if !a.enabled {
+func (s Service) WriteTo(_ context.Context, name string, reader io.Reader, _ model.WriteOpts) error {
+	if !s.enabled {
 		return model.ErrNotEnabled
 	}
 
@@ -136,13 +136,13 @@ func (a Service) WriteTo(_ context.Context, name string, reader io.Reader, _ mod
 		return err
 	}
 
-	writer, err := a.getWritableFile(name)
+	writer, err := s.getWritableFile(name)
 	if model.IsNotExist(err) {
-		if err = a.root.MkdirAll(path.Dir(a.relative(name)), model.DirectoryPerm); err != nil {
-			return a.ConvertError(err)
+		if err = s.root.MkdirAll(path.Dir(s.relative(name)), model.DirectoryPerm); err != nil {
+			return s.ConvertError(err)
 		}
 
-		writer, err = a.getWritableFile(name)
+		writer, err = s.getWritableFile(name)
 	}
 
 	if err != nil {
@@ -154,14 +154,14 @@ func (a Service) WriteTo(_ context.Context, name string, reader io.Reader, _ mod
 
 	// *os.File implements io.ReaderFrom, which makes io.CopyBuffer ignore buf and allocate its own.
 	if _, err = io.CopyBuffer(writerOnly{Writer: writer}, reader, *buf); err != nil {
-		err = a.ConvertError(err)
+		err = s.ConvertError(err)
 	}
 
 	return errors.Join(err, writer.Close())
 }
 
-func (a Service) ReadFrom(_ context.Context, name string) (model.ReadAtSeekCloser, error) {
-	if !a.enabled {
+func (s Service) ReadFrom(_ context.Context, name string) (model.ReadAtSeekCloser, error) {
+	if !s.enabled {
 		return nil, model.ErrNotEnabled
 	}
 
@@ -169,11 +169,11 @@ func (a Service) ReadFrom(_ context.Context, name string) (model.ReadAtSeekClose
 		return nil, err
 	}
 
-	return a.getReadableFile(name)
+	return s.getReadableFile(name)
 }
 
-func (a Service) UpdateDate(_ context.Context, name string, date time.Time) error {
-	if !a.enabled {
+func (s Service) UpdateDate(_ context.Context, name string, date time.Time) error {
+	if !s.enabled {
 		return model.ErrNotEnabled
 	}
 
@@ -181,11 +181,11 @@ func (a Service) UpdateDate(_ context.Context, name string, date time.Time) erro
 		return err
 	}
 
-	return a.ConvertError(a.root.Chtimes(a.relative(name), date, date))
+	return s.ConvertError(s.root.Chtimes(s.relative(name), date, date))
 }
 
-func (a Service) Walk(_ context.Context, name string, walkFn func(model.Item) error) error {
-	if !a.enabled {
+func (s Service) Walk(_ context.Context, name string, walkFn func(model.Item) error) error {
+	if !s.enabled {
 		return model.ErrNotEnabled
 	}
 
@@ -193,23 +193,23 @@ func (a Service) Walk(_ context.Context, name string, walkFn func(model.Item) er
 		return err
 	}
 
-	relative := a.relative(name)
+	relative := s.relative(name)
 
-	info, err := a.root.Stat(relative)
+	info, err := s.root.Stat(relative)
 	if err != nil {
-		return a.ConvertError(err)
+		return s.ConvertError(err)
 	}
 
 	if !info.IsDir() {
 		return model.ErrDirExpected
 	}
 
-	return a.ConvertError(a.walk(relative, a.pathname(name), info, walkFn))
+	return s.ConvertError(s.walk(relative, s.pathname(name), info, walkFn))
 }
 
-func (a Service) walk(relative, pathname string, info fs.FileInfo, walkFn func(model.Item) error) error {
-	item := a.newItem(pathname, info)
-	if a.ignoreFn != nil && a.ignoreFn(item) {
+func (s Service) walk(relative, pathname string, info fs.FileInfo, walkFn func(model.Item) error) error {
+	item := s.newItem(pathname, info)
+	if s.ignoreFn != nil && s.ignoreFn(item) {
 		return nil
 	}
 
@@ -221,7 +221,7 @@ func (a Service) walk(relative, pathname string, info fs.FileInfo, walkFn func(m
 		return nil
 	}
 
-	children, err := a.readDir(relative)
+	children, err := s.readDir(relative)
 	if err != nil {
 		return err
 	}
@@ -229,7 +229,7 @@ func (a Service) walk(relative, pathname string, info fs.FileInfo, walkFn func(m
 	for _, child := range children {
 		name := child.Name()
 
-		if err = a.walk(path.Join(relative, name), path.Join(pathname, name), child, walkFn); err != nil {
+		if err = s.walk(path.Join(relative, name), path.Join(pathname, name), child, walkFn); err != nil {
 			return err
 		}
 	}
@@ -237,8 +237,8 @@ func (a Service) walk(relative, pathname string, info fs.FileInfo, walkFn func(m
 	return nil
 }
 
-func (a Service) Mkdir(_ context.Context, name string) error {
-	if !a.enabled {
+func (s Service) Mkdir(_ context.Context, name string) error {
+	if !s.enabled {
 		return model.ErrNotEnabled
 	}
 
@@ -246,11 +246,11 @@ func (a Service) Mkdir(_ context.Context, name string) error {
 		return err
 	}
 
-	return a.ConvertError(a.root.MkdirAll(a.relative(name), model.DirectoryPerm))
+	return s.ConvertError(s.root.MkdirAll(s.relative(name), model.DirectoryPerm))
 }
 
-func (a Service) Rename(ctx context.Context, oldName, newName string) error {
-	if !a.enabled {
+func (s Service) Rename(ctx context.Context, oldName, newName string) error {
+	if !s.enabled {
 		return model.ErrNotEnabled
 	}
 
@@ -262,33 +262,33 @@ func (a Service) Rename(ctx context.Context, oldName, newName string) error {
 		return err
 	}
 
-	if _, err := a.stat(oldName); err != nil {
+	if _, err := s.stat(oldName); err != nil {
 		return err
 	}
 
-	oldRelative := a.relative(oldName)
-	newRelative := a.relative(newName)
+	oldRelative := s.relative(oldName)
+	newRelative := s.relative(newName)
 
 	if oldRelative == newRelative {
 		return nil
 	}
 
 	newDirPath := path.Dir(strings.TrimSuffix(newName, "/"))
-	if _, err := a.stat(newDirPath); err != nil {
+	if _, err := s.stat(newDirPath); err != nil {
 		if model.IsNotExist(err) {
-			if err = a.Mkdir(ctx, newDirPath); err != nil {
-				return a.ConvertError(err)
+			if err = s.Mkdir(ctx, newDirPath); err != nil {
+				return s.ConvertError(err)
 			}
 		} else {
 			return fmt.Errorf("check if new directory exists: %w", err)
 		}
 	}
 
-	return a.ConvertError(a.root.Rename(oldRelative, newRelative))
+	return s.ConvertError(s.root.Rename(oldRelative, newRelative))
 }
 
-func (a Service) RemoveAll(_ context.Context, name string) error {
-	if !a.enabled {
+func (s Service) RemoveAll(_ context.Context, name string) error {
+	if !s.enabled {
 		return model.ErrNotEnabled
 	}
 
@@ -296,10 +296,10 @@ func (a Service) RemoveAll(_ context.Context, name string) error {
 		return err
 	}
 
-	return a.ConvertError(a.root.RemoveAll(a.relative(name)))
+	return s.ConvertError(s.root.RemoveAll(s.relative(name)))
 }
 
-func (a Service) ConvertError(err error) error {
+func (s Service) ConvertError(err error) error {
 	if err == nil {
 		return nil
 	}

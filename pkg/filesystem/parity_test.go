@@ -10,7 +10,7 @@ import (
 func TestStorageContract(t *testing.T) {
 	t.Parallel()
 
-	storagetest.Run(t, func(t *testing.T) model.Storage {
+	storagetest.Run(t, func(t *testing.T, _ string) model.Storage {
 		t.Helper()
 
 		service, err := New(t.TempDir())

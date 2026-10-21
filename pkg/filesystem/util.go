@@ -18,7 +18,7 @@ type writerOnly struct {
 	io.Writer
 }
 
-func (a Service) relative(name string) string {
+func (s Service) relative(name string) string {
 	relative := strings.TrimPrefix(path.Clean("/"+name), "/")
 	if relative == "" {
 		return "."
@@ -27,12 +27,12 @@ func (a Service) relative(name string) string {
 	return relative
 }
 
-func (a Service) pathname(name string) string {
+func (s Service) pathname(name string) string {
 	return path.Clean("/" + name)
 }
 
-func (a Service) readDir(relative string) ([]fs.FileInfo, error) {
-	entries, err := fs.ReadDir(a.root.FS(), relative)
+func (s Service) readDir(relative string) ([]fs.FileInfo, error) {
+	entries, err := fs.ReadDir(s.root.FS(), relative)
 	if err != nil {
 		return nil, fmt.Errorf("read dir: %w", err)
 	}
@@ -67,34 +67,34 @@ func sortKey(info fs.FileInfo) string {
 	return info.Name()
 }
 
-func (a Service) newItem(pathname string, info fs.FileInfo) model.Item {
+func (s Service) newItem(pathname string, info fs.FileInfo) model.Item {
 	item := convertToItem(pathname, info)
 
 	if info.Name() == "." {
-		item.NameValue = a.rootDirname
+		item.NameValue = s.rootDirname
 	}
 
 	return item
 }
 
-func (a Service) getReadableFile(filename string) (model.ReadAtSeekCloser, error) {
-	return a.getFile(filename, model.ReadFlag)
+func (s Service) getReadableFile(filename string) (model.ReadAtSeekCloser, error) {
+	return s.getFile(filename, model.ReadFlag)
 }
 
-func (a Service) getWritableFile(filename string) (io.WriteCloser, error) {
-	return a.getFile(filename, model.WriteFlag)
+func (s Service) getWritableFile(filename string) (io.WriteCloser, error) {
+	return s.getFile(filename, model.WriteFlag)
 }
 
-func (a Service) getFile(filename string, flags int) (*os.File, error) {
-	relativeName := a.relative(filename)
+func (s Service) getFile(filename string, flags int) (*os.File, error) {
+	relativeName := s.relative(filename)
 
 	if strings.HasSuffix(relativeName, "/") {
 		return nil, &fs.PathError{Op: "open", Path: filename, Err: syscall.EISDIR}
 	}
 
-	file, err := a.root.OpenFile(relativeName, flags, model.RegularFilePerm)
+	file, err := s.root.OpenFile(relativeName, flags, model.RegularFilePerm)
 	if err != nil {
-		return nil, a.ConvertError(err)
+		return nil, s.ConvertError(err)
 	}
 
 	return file, nil
