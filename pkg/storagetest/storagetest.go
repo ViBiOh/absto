@@ -10,12 +10,12 @@ import (
 	"github.com/ViBiOh/absto/pkg/model"
 )
 
-type Factory func(t *testing.T) model.Storage
+type Factory func(t *testing.T, prefix string) model.Storage
 
 func Run(t *testing.T, factory Factory) {
 	t.Helper()
 
-	suites := map[string]func(*testing.T, Factory){
+	suites := map[string]func(*testing.T, string, Factory){
 		"Stat":      testStat,
 		"List":      testList,
 		"Walk":      testWalk,
@@ -29,19 +29,21 @@ func Run(t *testing.T, factory Factory) {
 
 	for name, suite := range suites {
 		t.Run(name, func(t *testing.T) {
-			suite(t, factory)
+			t.Parallel()
+
+			suite(t, "/"+name, factory)
 		})
 	}
 }
 
-func seed(t *testing.T, factory Factory) model.Storage {
+func seed(t *testing.T, prefix string, factory Factory) model.Storage {
 	t.Helper()
 
-	cleanup := clean(t, factory)
+	cleanup := clean(t, prefix, factory)
 	cleanup()
 	t.Cleanup(cleanup)
 
-	storage := factory(t)
+	storage := factory(t, prefix)
 	ctx := context.Background()
 
 	files := map[string]string{
@@ -64,10 +66,10 @@ func seed(t *testing.T, factory Factory) model.Storage {
 	return storage
 }
 
-func clean(t *testing.T, factory Factory) func() {
+func clean(t *testing.T, prefix string, factory Factory) func() {
 	return func() {
 		ctx := context.Background()
-		storage := factory(t)
+		storage := factory(t, prefix)
 
 		items, err := storage.List(ctx, "/")
 		if err != nil {
@@ -120,8 +122,8 @@ func assertNotExist(t *testing.T, err error) {
 	}
 }
 
-func testStat(t *testing.T, factory Factory) {
-	storage := seed(t, factory)
+func testStat(t *testing.T, prefix string, factory Factory) {
+	storage := seed(t, prefix, factory)
 
 	cases := map[string]struct {
 		name      string
@@ -193,8 +195,8 @@ func testStat(t *testing.T, factory Factory) {
 	})
 }
 
-func testList(t *testing.T, factory Factory) {
-	storage := seed(t, factory)
+func testList(t *testing.T, prefix string, factory Factory) {
+	storage := seed(t, prefix, factory)
 
 	cases := map[string][]string{
 		"/photo":     {"/photo/a.jpg", "/photo/sub"},
@@ -227,8 +229,8 @@ func testList(t *testing.T, factory Factory) {
 	}
 }
 
-func testWalk(t *testing.T, factory Factory) {
-	storage := seed(t, factory)
+func testWalk(t *testing.T, prefix string, factory Factory) {
+	storage := seed(t, prefix, factory)
 
 	cases := map[string][]string{
 		"/photo":     {"/photo", "/photo/a.jpg", "/photo/sub", "/photo/sub/b.jpg"},
@@ -290,8 +292,8 @@ func testWalk(t *testing.T, factory Factory) {
 	})
 }
 
-func testIgnoreFn(t *testing.T, factory Factory) {
-	storage := seed(t, factory)
+func testIgnoreFn(t *testing.T, prefix string, factory Factory) {
+	storage := seed(t, prefix, factory)
 
 	ignoring := storage.WithIgnoreFn(func(item model.Item) bool {
 		return item.Name() == "sub"
@@ -316,7 +318,7 @@ func testIgnoreFn(t *testing.T, factory Factory) {
 	})
 
 	t.Run("mutations act on everything", func(t *testing.T) {
-		mutable := seed(t, factory)
+		mutable := seed(t, prefix, factory)
 		mutableIgnoring := mutable.WithIgnoreFn(func(item model.Item) bool {
 			return item.Name() == "sub"
 		})
@@ -343,11 +345,11 @@ func testIgnoreFn(t *testing.T, factory Factory) {
 	})
 }
 
-func testMkdir(t *testing.T, factory Factory) {
+func testMkdir(t *testing.T, prefix string, factory Factory) {
 	ctx := context.Background()
 
 	t.Run("nested and idempotent", func(t *testing.T) {
-		storage := seed(t, factory)
+		storage := seed(t, prefix, factory)
 
 		for range 2 {
 			if err := storage.Mkdir(ctx, "/a/b/c"); err != nil {
@@ -371,7 +373,7 @@ func testMkdir(t *testing.T, factory Factory) {
 	})
 
 	t.Run("existing implicit directory", func(t *testing.T) {
-		storage := seed(t, factory)
+		storage := seed(t, prefix, factory)
 
 		if err := storage.Mkdir(ctx, "/photo/sub"); err != nil {
 			t.Fatalf("Mkdir() unexpected error: %s", err)
@@ -386,7 +388,7 @@ func testMkdir(t *testing.T, factory Factory) {
 	})
 
 	t.Run("file in the way", func(t *testing.T) {
-		storage := seed(t, factory)
+		storage := seed(t, prefix, factory)
 
 		if err := storage.Mkdir(ctx, "/photo.jpg"); err == nil {
 			t.Error("Mkdir() want an error when a file has the same name")
@@ -395,7 +397,7 @@ func testMkdir(t *testing.T, factory Factory) {
 
 	for _, name := range []string{"/photo.jpg/child", "/photo/a.jpg/child"} {
 		t.Run("through a file "+name, func(t *testing.T) {
-			storage := seed(t, factory)
+			storage := seed(t, prefix, factory)
 
 			err := storage.Mkdir(ctx, name)
 			if err == nil {
@@ -407,8 +409,8 @@ func testMkdir(t *testing.T, factory Factory) {
 	}
 }
 
-func testWriteTo(t *testing.T, factory Factory) {
-	storage := seed(t, factory)
+func testWriteTo(t *testing.T, prefix string, factory Factory) {
+	storage := seed(t, prefix, factory)
 	ctx := context.Background()
 
 	t.Run("creates missing parents", func(t *testing.T) {
@@ -466,8 +468,8 @@ func testWriteTo(t *testing.T, factory Factory) {
 	})
 }
 
-func testReadFrom(t *testing.T, factory Factory) {
-	storage := seed(t, factory)
+func testReadFrom(t *testing.T, prefix string, factory Factory) {
+	storage := seed(t, prefix, factory)
 	ctx := context.Background()
 
 	t.Run("content", func(t *testing.T) {
@@ -500,7 +502,7 @@ func testReadFrom(t *testing.T, factory Factory) {
 	}
 }
 
-func testRename(t *testing.T, factory Factory) {
+func testRename(t *testing.T, prefix string, factory Factory) {
 	ctx := context.Background()
 
 	wantMoved := []string{"/img", "/img/a.jpg", "/img/sub", "/img/sub/b.jpg"}
@@ -513,7 +515,7 @@ func testRename(t *testing.T, factory Factory) {
 		{"photo", "img"},
 	} {
 		t.Run("directory "+names[0]+" to "+names[1], func(t *testing.T) {
-			storage := seed(t, factory)
+			storage := seed(t, prefix, factory)
 
 			if err := storage.Rename(ctx, names[0], names[1]); err != nil {
 				t.Fatalf("Rename() unexpected error: %s", err)
@@ -538,7 +540,7 @@ func testRename(t *testing.T, factory Factory) {
 	}
 
 	t.Run("file with new parents", func(t *testing.T) {
-		storage := seed(t, factory)
+		storage := seed(t, prefix, factory)
 
 		if err := storage.Rename(ctx, "/photo.jpg", "/moved/deep/p.jpg"); err != nil {
 			t.Fatalf("Rename() unexpected error: %s", err)
@@ -553,7 +555,7 @@ func testRename(t *testing.T, factory Factory) {
 	})
 
 	t.Run("missing source", func(t *testing.T) {
-		storage := seed(t, factory)
+		storage := seed(t, prefix, factory)
 
 		assertNotExist(t, storage.Rename(ctx, "/missing", "/other"))
 		assertNotExist(t, storage.Rename(ctx, "/pho", "/other"))
@@ -564,7 +566,7 @@ func testRename(t *testing.T, factory Factory) {
 	})
 
 	t.Run("into itself", func(t *testing.T) {
-		storage := seed(t, factory)
+		storage := seed(t, prefix, factory)
 
 		if err := storage.Rename(ctx, "/photo", "/photo/inner"); err == nil {
 			t.Error("Rename() want an error when moving a directory into itself")
@@ -576,7 +578,7 @@ func testRename(t *testing.T, factory Factory) {
 	})
 
 	t.Run("same path", func(t *testing.T) {
-		storage := seed(t, factory)
+		storage := seed(t, prefix, factory)
 
 		if err := storage.Rename(ctx, "/photo", "/photo"); err != nil {
 			t.Errorf("Rename() unexpected error: %s", err)
@@ -588,7 +590,7 @@ func testRename(t *testing.T, factory Factory) {
 	})
 
 	t.Run("root", func(t *testing.T) {
-		storage := seed(t, factory)
+		storage := seed(t, prefix, factory)
 
 		if err := storage.Rename(ctx, "/", "/other"); err == nil {
 			t.Error("Rename() want an error for the root")
@@ -596,12 +598,12 @@ func testRename(t *testing.T, factory Factory) {
 	})
 }
 
-func testRemoveAll(t *testing.T, factory Factory) {
+func testRemoveAll(t *testing.T, prefix string, factory Factory) {
 	ctx := context.Background()
 
 	for _, name := range []string{"/photo", "/photo/"} {
 		t.Run("directory "+name, func(t *testing.T) {
-			storage := seed(t, factory)
+			storage := seed(t, prefix, factory)
 
 			if err := storage.RemoveAll(ctx, name); err != nil {
 				t.Fatalf("RemoveAll() unexpected error: %s", err)
@@ -620,7 +622,7 @@ func testRemoveAll(t *testing.T, factory Factory) {
 	}
 
 	t.Run("file", func(t *testing.T) {
-		storage := seed(t, factory)
+		storage := seed(t, prefix, factory)
 
 		if err := storage.RemoveAll(ctx, "/photo.jpg"); err != nil {
 			t.Fatal(err)
@@ -635,7 +637,7 @@ func testRemoveAll(t *testing.T, factory Factory) {
 	})
 
 	t.Run("missing", func(t *testing.T) {
-		storage := seed(t, factory)
+		storage := seed(t, prefix, factory)
 
 		for _, name := range []string{"/missing", "/pho", "/photo.jp"} {
 			if err := storage.RemoveAll(ctx, name); err != nil {
@@ -654,7 +656,7 @@ func testRemoveAll(t *testing.T, factory Factory) {
 	})
 
 	t.Run("root", func(t *testing.T) {
-		storage := seed(t, factory)
+		storage := seed(t, prefix, factory)
 
 		for _, name := range []string{"/", ""} {
 			if err := storage.RemoveAll(ctx, name); err == nil {

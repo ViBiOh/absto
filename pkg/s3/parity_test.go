@@ -15,7 +15,7 @@ func TestStorageContract(t *testing.T) {
 		return
 	}
 
-	storagetest.Run(t, func(t *testing.T) model.Storage {
+	storagetest.Run(t, func(t *testing.T, prefix string) model.Storage {
 		t.Helper()
 
 		Endpoint := os.Getenv("ABSTO_TEST_ENDPOINT")
@@ -23,7 +23,10 @@ func TestStorageContract(t *testing.T) {
 		SecretAccess := os.Getenv("ABSTO_TEST_SECRET_ACCESS")
 		Bucket := os.Getenv("ABSTO_TEST_BUCKET")
 
-		service, _ := New(Endpoint, AccessKey, SecretAccess, Bucket, true, 5<<20)
+		service, err := New(Endpoint, AccessKey, SecretAccess, Bucket, true, 5<<20, WithPrefix(prefix))
+		if err != nil {
+			t.Fatal(err)
+		}
 
 		return service
 	})

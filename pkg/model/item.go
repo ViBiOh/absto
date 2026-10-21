@@ -71,6 +71,14 @@ func (i Item) Dir() string {
 	return Dirname(path.Dir(i.Pathname))
 }
 
+func (i Item) SortKey() string {
+	if i.IsDir() {
+		return i.Pathname + "/"
+	}
+
+	return i.Pathname
+}
+
 func ID(value string) string {
 	return strconv.FormatUint(xxh3.HashString(value), 16)
 }
