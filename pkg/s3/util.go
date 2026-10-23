@@ -10,6 +10,8 @@ import (
 	"github.com/minio/minio-go/v7"
 )
 
+const storageClassHeader = "X-Amz-Storage-Class"
+
 var errStopWalk = errors.New("stop walk")
 
 func (s Service) ConvertError(err error) error {
@@ -32,6 +34,20 @@ func IsNotExist(err error) bool {
 	var response minio.ErrorResponse
 
 	return errors.As(err, &response) && response.Code == minio.NoSuchKey
+}
+
+func (s Service) copyDestination(object string) minio.CopyDestOptions {
+	options := minio.CopyDestOptions{
+		Bucket: s.bucket,
+		Object: object,
+	}
+
+	if len(s.storageClass) != 0 {
+		options.ReplaceMetadata = true
+		options.UserMetadata = map[string]string{storageClassHeader: s.storageClass}
+	}
+
+	return options
 }
 
 func notExist() error {

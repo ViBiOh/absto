@@ -417,18 +417,13 @@ func (s Service) Rename(ctx context.Context, oldName, newName string) error {
 		return s.rename(ctx, oldRelative, newRelative, oldRelative)
 	}
 
-	err = s.walkRecursive(ctx, model.Dirname(oldClean), func(object minio.ObjectInfo) error {
+	return s.walkRecursive(ctx, model.Dirname(oldClean), func(object minio.ObjectInfo) error {
 		return s.rename(ctx, oldRelative, newRelative, object.Key)
 	})
-
-	return s.ConvertError(err)
 }
 
 func (s Service) rename(ctx context.Context, oldName, newName, objectKey string) error {
-	_, err := s.client.CopyObject(ctx, minio.CopyDestOptions{
-		Bucket: s.bucket,
-		Object: newName + strings.TrimPrefix(objectKey, oldName),
-	}, minio.CopySrcOptions{
+	_, err := s.client.CopyObject(ctx, s.copyDestination(newName+strings.TrimPrefix(objectKey, oldName)), minio.CopySrcOptions{
 		Bucket: s.bucket,
 		Object: objectKey,
 	})

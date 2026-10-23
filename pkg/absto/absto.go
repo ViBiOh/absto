@@ -51,6 +51,7 @@ func Flags(fs *flag.FlagSet, prefix string, overrides ...flags.Override) *Config
 
 func New(config *Config, tracerProvider trace.TracerProvider) (storage model.Storage, err error) {
 	endpoint := strings.TrimSpace(config.Endpoint)
+
 	if len(endpoint) != 0 {
 		var options []s3.ConfigOption
 
