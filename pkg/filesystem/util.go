@@ -78,23 +78,41 @@ func (s Service) newItem(pathname string, info fs.FileInfo) model.Item {
 }
 
 func (s Service) getReadableFile(filename string) (model.ReadAtSeekCloser, error) {
-	return s.getFile(filename, model.ReadFlag)
+	file, err := s.getFile(filename, model.ReadFlag)
+	if err != nil {
+		return nil, err
+	}
+
+	return file, nil
 }
 
 func (s Service) getWritableFile(filename string) (io.WriteCloser, error) {
-	return s.getFile(filename, model.WriteFlag)
+	file, err := s.getFile(filename, model.WriteFlag)
+	if err != nil {
+		return nil, err
+	}
+
+	return file, nil
 }
 
 func (s Service) getFile(filename string, flags int) (*os.File, error) {
-	relativeName := s.relative(filename)
-
-	if strings.HasSuffix(relativeName, "/") {
+	if strings.HasSuffix(filename, "/") {
 		return nil, &fs.PathError{Op: "open", Path: filename, Err: syscall.EISDIR}
 	}
+
+	relativeName := s.relative(filename)
 
 	file, err := s.root.OpenFile(relativeName, flags, model.RegularFilePerm)
 	if err != nil {
 		return nil, s.ConvertError(err)
+	}
+
+	if flags == model.ReadFlag {
+		if info, err := file.Stat(); err != nil {
+			return nil, errors.Join(s.ConvertError(err), file.Close())
+		} else if info.IsDir() {
+			return nil, errors.Join(&fs.PathError{Op: "open", Path: filename, Err: syscall.EISDIR}, file.Close())
+		}
 	}
 
 	return file, nil

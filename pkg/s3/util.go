@@ -25,6 +25,10 @@ func (s Service) ConvertError(err error) error {
 }
 
 func IsNotExist(err error) bool {
+	if err == nil {
+		return false
+	}
+
 	return strings.Contains(err.Error(), "The specified key does not exist")
 }
 

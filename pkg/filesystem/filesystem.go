@@ -304,7 +304,7 @@ func (s Service) ConvertError(err error) error {
 		return nil
 	}
 
-	if errors.Is(err, fs.ErrNotExist) || strings.HasSuffix(err.Error(), "not a directory") {
+	if errors.Is(err, fs.ErrNotExist) || errors.Is(err, syscall.ENOTDIR) {
 		return model.ErrNotExist(err)
 	}
 
