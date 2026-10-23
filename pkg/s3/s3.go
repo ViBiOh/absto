@@ -394,10 +394,10 @@ func (s Service) Rename(ctx context.Context, oldName, newName string) error {
 		return err
 	}
 
-	oldClean := path.Clean(oldName)
-	newClean := path.Clean(newName)
+	oldClean := path.Clean("/" + oldName)
+	newClean := path.Clean("/" + newName)
 
-	if oldClean == "/" || newName == "/" || oldClean == "." || newName == "." || strings.HasPrefix(newClean, oldClean+"/") {
+	if oldClean == "/" || newClean == "/" || strings.HasPrefix(newClean, oldClean+"/") {
 		return &fs.PathError{Op: "rename", Path: oldName, Err: syscall.EINVAL}
 	}
 
@@ -417,7 +417,7 @@ func (s Service) Rename(ctx context.Context, oldName, newName string) error {
 		return s.rename(ctx, oldRelative, newRelative, oldRelative)
 	}
 
-	err = s.walkRecursive(ctx, model.Dirname(oldName), func(object minio.ObjectInfo) error {
+	err = s.walkRecursive(ctx, model.Dirname(oldClean), func(object minio.ObjectInfo) error {
 		return s.rename(ctx, oldRelative, newRelative, object.Key)
 	})
 

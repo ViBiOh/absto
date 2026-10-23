@@ -29,7 +29,9 @@ func IsNotExist(err error) bool {
 		return false
 	}
 
-	return strings.Contains(err.Error(), "The specified key does not exist")
+	var response minio.ErrorResponse
+
+	return errors.As(err, &response) && response.Code == minio.NoSuchKey
 }
 
 func notExist() error {

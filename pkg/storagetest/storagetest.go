@@ -565,17 +565,41 @@ func testRename(t *testing.T, prefix string, factory Factory) {
 		}
 	})
 
-	t.Run("into itself", func(t *testing.T) {
-		storage := seed(t, prefix, factory)
+	for _, names := range [][2]string{
+		{"/photo", "/photo/inner"},
+		{"/photo", "photo/inner"},
+		{"photo", "/photo/inner"},
+		{"/photo/", "/photo//inner"},
+	} {
+		t.Run("into itself "+names[0]+" to "+names[1], func(t *testing.T) {
+			storage := seed(t, prefix, factory)
 
-		if err := storage.Rename(ctx, "/photo", "/photo/inner"); err == nil {
-			t.Error("Rename() want an error when moving a directory into itself")
-		}
+			if err := storage.Rename(ctx, names[0], names[1]); err == nil {
+				t.Error("Rename() want an error when moving a directory into itself")
+			}
 
-		if _, err := storage.Stat(ctx, "/photo/a.jpg"); err != nil {
-			t.Errorf("source damaged: %s", err)
-		}
-	})
+			got, err := walkAll(storage, "/photo")
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			assertPathnames(t, got, []string{"/photo", "/photo/a.jpg", "/photo/sub", "/photo/sub/b.jpg"})
+		})
+	}
+
+	for _, newName := range []string{"", "/", "//", "."} {
+		t.Run("to root "+newName, func(t *testing.T) {
+			storage := seed(t, prefix, factory)
+
+			if err := storage.Rename(ctx, "/photo.jpg", newName); err == nil {
+				t.Errorf("Rename() want an error for the destination %q", newName)
+			}
+
+			if _, err := storage.Stat(ctx, "/photo.jpg"); err != nil {
+				t.Errorf("source damaged: %s", err)
+			}
+		})
+	}
 
 	t.Run("same path", func(t *testing.T) {
 		storage := seed(t, prefix, factory)
