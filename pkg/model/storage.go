@@ -25,6 +25,9 @@ type ReadAtSeekCloser interface {
 }
 
 type Storage interface {
+	Enabled() bool
+	Path(string) string
+
 	Stat(ctx context.Context, name string) (Item, error)
 	Mkdir(ctx context.Context, name string) error
 	Rename(ctx context.Context, oldName, newName string) error

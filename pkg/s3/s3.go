@@ -104,6 +104,14 @@ func (s Service) WithIgnoreFn(ignoreFn func(model.Item) bool) model.Storage {
 	return s
 }
 
+func (s Service) Enabled() bool {
+	return s.enabled
+}
+
+func (s Service) Path(name string) string {
+	return s.relative(name)
+}
+
 func (s Service) Stat(ctx context.Context, pathname string) (model.Item, error) {
 	if !s.enabled {
 		return model.Item{}, model.ErrNotEnabled
