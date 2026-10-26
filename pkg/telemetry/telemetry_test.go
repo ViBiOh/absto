@@ -28,6 +28,12 @@ func newTestStorage(t *testing.T) (model.Storage, *tracetest.SpanRecorder) {
 		t.Fatal(err)
 	}
 
+	t.Cleanup(func() {
+		if err := backend.Close(); err != nil {
+			t.Fatal(err)
+		}
+	})
+
 	recorder := tracetest.NewSpanRecorder()
 	provider := sdktrace.NewTracerProvider(sdktrace.WithSpanProcessor(recorder))
 

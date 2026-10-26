@@ -26,6 +26,7 @@ type ReadAtSeekCloser interface {
 
 type Storage interface {
 	Enabled() bool
+	Close() error
 	Path(string) string
 
 	Stat(ctx context.Context, name string) (Item, error)

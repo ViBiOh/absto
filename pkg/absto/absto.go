@@ -68,7 +68,7 @@ func New(config *Config, tracerProvider trace.TracerProvider) (storage model.Sto
 	}
 
 	if err != nil {
-		return storage, err
+		return nil, err
 	}
 
 	return telemetry.New(storage, tracerProvider), nil

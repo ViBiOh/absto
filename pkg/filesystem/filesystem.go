@@ -38,10 +38,6 @@ type Service struct {
 func New(directory string) (Service, error) {
 	rootDirectory := strings.TrimSuffix(directory, "/")
 
-	if len(rootDirectory) == 0 {
-		return Service{}, nil
-	}
-
 	info, err := os.Stat(rootDirectory)
 	if err != nil {
 		return Service{}, Service{}.ConvertError(err)
@@ -76,6 +72,14 @@ func (s Service) WithIgnoreFn(ignoreFn func(model.Item) bool) model.Storage {
 
 func (s Service) Enabled() bool {
 	return s.enabled
+}
+
+func (s Service) Close() error {
+	if !s.enabled {
+		return model.ErrNotEnabled
+	}
+
+	return s.ConvertError(s.root.Close())
 }
 
 func (s Service) Path(name string) string {

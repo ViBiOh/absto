@@ -41,6 +41,12 @@ func TestWalk(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	t.Cleanup(func() {
+		if err := service.Close(); err != nil {
+			t.Fatal(err)
+		}
+	})
+
 	cases := map[string]struct {
 		name    string
 		want    []string
@@ -125,6 +131,12 @@ func newLinkedRoot(t *testing.T) (string, string, Service) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	t.Cleanup(func() {
+		if err := service.Close(); err != nil {
+			t.Fatal(err)
+		}
+	})
 
 	return root, outside, service
 }
@@ -271,6 +283,12 @@ func TestItems(t *testing.T) {
 				t.Fatal(err)
 			}
 
+			t.Cleanup(func() {
+				if err := service.Close(); err != nil {
+					t.Fatal(err)
+				}
+			})
+
 			ctx := context.Background()
 
 			rootItem, err := service.Stat(ctx, "/")
@@ -345,6 +363,12 @@ func BenchmarkWriteTo(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
+
+	b.Cleanup(func() {
+		if err := service.Close(); err != nil {
+			b.Fatal(err)
+		}
+	})
 
 	ctx := context.Background()
 	payload := strings.Repeat("a", 1<<20)

@@ -30,51 +30,51 @@ func New(storage model.Storage, tracerProvider trace.TracerProvider) model.Stora
 	}
 }
 
-func (a Service) Name() string {
-	return a.Storage.Name()
+func (s Service) Name() string {
+	return s.Storage.Name()
 }
 
-func (a Service) WithIgnoreFn(ignoreFn func(model.Item) bool) model.Storage {
+func (s Service) WithIgnoreFn(ignoreFn func(model.Item) bool) model.Storage {
 	return Service{
-		Storage: a.Storage.WithIgnoreFn(ignoreFn),
-		tracer:  a.tracer,
+		Storage: s.Storage.WithIgnoreFn(ignoreFn),
+		tracer:  s.tracer,
 	}
 }
 
-func (a Service) Stat(ctx context.Context, name string) (model.Item, error) {
-	ctx, span := a.tracer.Start(ctx, "stat", trace.WithAttributes(attribute.String("name", name)))
+func (s Service) Stat(ctx context.Context, name string) (model.Item, error) {
+	ctx, span := s.tracer.Start(ctx, "stat", trace.WithAttributes(attribute.String("name", name)))
 	defer span.End()
 
-	output, err := a.Storage.Stat(ctx, name)
+	output, err := s.Storage.Stat(ctx, name)
 	recordError(span, err)
 
 	return output, err
 }
 
-func (a Service) List(ctx context.Context, name string) ([]model.Item, error) {
-	ctx, span := a.tracer.Start(ctx, "list", trace.WithAttributes(attribute.String("name", name)))
+func (s Service) List(ctx context.Context, name string) ([]model.Item, error) {
+	ctx, span := s.tracer.Start(ctx, "list", trace.WithAttributes(attribute.String("name", name)))
 	defer span.End()
 
-	output, err := a.Storage.List(ctx, name)
+	output, err := s.Storage.List(ctx, name)
 	recordError(span, err)
 
 	return output, err
 }
 
-func (a Service) WriteTo(ctx context.Context, name string, reader io.Reader, opts model.WriteOpts) error {
-	ctx, span := a.tracer.Start(ctx, "writeTo", trace.WithAttributes(attribute.String("name", name)))
+func (s Service) WriteTo(ctx context.Context, name string, reader io.Reader, opts model.WriteOpts) error {
+	ctx, span := s.tracer.Start(ctx, "writeTo", trace.WithAttributes(attribute.String("name", name)))
 	defer span.End()
 
-	err := a.Storage.WriteTo(ctx, name, reader, opts)
+	err := s.Storage.WriteTo(ctx, name, reader, opts)
 	recordError(span, err)
 
 	return err
 }
 
-func (a Service) ReadFrom(ctx context.Context, name string) (model.ReadAtSeekCloser, error) {
-	ctx, span := a.tracer.Start(ctx, "readFrom", trace.WithAttributes(attribute.String("name", name)))
+func (s Service) ReadFrom(ctx context.Context, name string) (model.ReadAtSeekCloser, error) {
+	ctx, span := s.tracer.Start(ctx, "readFrom", trace.WithAttributes(attribute.String("name", name)))
 
-	reader, err := a.Storage.ReadFrom(ctx, name)
+	reader, err := s.Storage.ReadFrom(ctx, name)
 	if err != nil {
 		recordError(span, err)
 		span.End()
@@ -94,51 +94,51 @@ func (a Service) ReadFrom(ctx context.Context, name string) (model.ReadAtSeekClo
 	return closer, nil
 }
 
-func (a Service) UpdateDate(ctx context.Context, name string, date time.Time) error {
-	ctx, span := a.tracer.Start(ctx, "updateDate", trace.WithAttributes(attribute.String("name", name)))
+func (s Service) UpdateDate(ctx context.Context, name string, date time.Time) error {
+	ctx, span := s.tracer.Start(ctx, "updateDate", trace.WithAttributes(attribute.String("name", name)))
 	defer span.End()
 
-	err := a.Storage.UpdateDate(ctx, name, date)
+	err := s.Storage.UpdateDate(ctx, name, date)
 	recordError(span, err)
 
 	return err
 }
 
-func (a Service) Walk(ctx context.Context, name string, walkFn func(model.Item) error) error {
-	ctx, span := a.tracer.Start(ctx, "walk", trace.WithAttributes(attribute.String("name", name)))
+func (s Service) Walk(ctx context.Context, name string, walkFn func(model.Item) error) error {
+	ctx, span := s.tracer.Start(ctx, "walk", trace.WithAttributes(attribute.String("name", name)))
 	defer span.End()
 
-	err := a.Storage.Walk(ctx, name, walkFn)
+	err := s.Storage.Walk(ctx, name, walkFn)
 	recordError(span, err)
 
 	return err
 }
 
-func (a Service) Mkdir(ctx context.Context, name string) error {
-	ctx, span := a.tracer.Start(ctx, "mkdir", trace.WithAttributes(attribute.String("name", name)))
+func (s Service) Mkdir(ctx context.Context, name string) error {
+	ctx, span := s.tracer.Start(ctx, "mkdir", trace.WithAttributes(attribute.String("name", name)))
 	defer span.End()
 
-	err := a.Storage.Mkdir(ctx, name)
+	err := s.Storage.Mkdir(ctx, name)
 	recordError(span, err)
 
 	return err
 }
 
-func (a Service) Rename(ctx context.Context, oldName, newName string) error {
-	ctx, span := a.tracer.Start(ctx, "rename", trace.WithAttributes(attribute.String("oldName", oldName)), trace.WithAttributes(attribute.String("newName", newName)))
+func (s Service) Rename(ctx context.Context, oldName, newName string) error {
+	ctx, span := s.tracer.Start(ctx, "rename", trace.WithAttributes(attribute.String("oldName", oldName)), trace.WithAttributes(attribute.String("newName", newName)))
 	defer span.End()
 
-	err := a.Storage.Rename(ctx, oldName, newName)
+	err := s.Storage.Rename(ctx, oldName, newName)
 	recordError(span, err)
 
 	return err
 }
 
-func (a Service) RemoveAll(ctx context.Context, name string) error {
-	ctx, span := a.tracer.Start(ctx, "removeAll", trace.WithAttributes(attribute.String("name", name)))
+func (s Service) RemoveAll(ctx context.Context, name string) error {
+	ctx, span := s.tracer.Start(ctx, "removeAll", trace.WithAttributes(attribute.String("name", name)))
 	defer span.End()
 
-	err := a.Storage.RemoveAll(ctx, name)
+	err := s.Storage.RemoveAll(ctx, name)
 	recordError(span, err)
 
 	return err
@@ -176,6 +176,6 @@ func recordError(span trace.Span, err error) {
 	span.SetStatus(codes.Error, err.Error())
 }
 
-func (a Service) ConvertError(err error) error {
-	return a.Storage.ConvertError(err)
+func (s Service) ConvertError(err error) error {
+	return s.Storage.ConvertError(err)
 }

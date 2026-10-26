@@ -18,6 +18,12 @@ func TestStorageContract(t *testing.T) {
 			t.Fatal(err)
 		}
 
+		t.Cleanup(func() {
+			if err := service.Close(); err != nil {
+				t.Fatal(err)
+			}
+		})
+
 		return service
 	})
 }

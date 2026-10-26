@@ -108,6 +108,10 @@ func (s Service) Enabled() bool {
 	return s.enabled
 }
 
+func (s Service) Close() error {
+	return model.ErrNotEnabled
+}
+
 func (s Service) Path(name string) string {
 	return s.relative(name)
 }
