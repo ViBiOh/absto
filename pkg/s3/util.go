@@ -12,8 +12,6 @@ import (
 
 const storageClassHeader = "X-Amz-Storage-Class"
 
-var errStopWalk = errors.New("stop walk")
-
 func (s Service) ConvertError(err error) error {
 	if err == nil {
 		return nil

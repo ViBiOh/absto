@@ -425,9 +425,13 @@ func (s Service) Rename(ctx context.Context, oldName, newName string) error {
 		return s.rename(ctx, oldRelative, newRelative, oldRelative)
 	}
 
-	return s.walkRecursive(ctx, model.Dirname(oldClean), func(object minio.ObjectInfo) error {
-		return s.rename(ctx, oldRelative, newRelative, object.Key)
-	})
+	for object := range s.client.ListObjectsIter(ctx, s.bucket, minio.ListObjectsOptions{Prefix: s.relative(model.Dirname(item.Pathname)), Recursive: true}) {
+		if err := s.rename(ctx, oldRelative, newRelative, object.Key); err != nil {
+			return fmt.Errorf("rename `%s`: %w", object.Key, err)
+		}
+	}
+
+	return nil
 }
 
 func (s Service) rename(ctx context.Context, oldName, newName, objectKey string) error {
@@ -474,19 +478,10 @@ func (s Service) RemoveAll(ctx context.Context, pathname string) error {
 
 	var walkErr error
 
-	walkIter := func(yield func(minio.ObjectInfo) bool) {
-		walkErr = s.walkRecursive(ctx, model.Dirname(item.Pathname), func(info minio.ObjectInfo) error {
-			if !yield(info) {
-				return errStopWalk
-			}
-
-			return nil
-		})
-
-		if errors.Is(walkErr, errStopWalk) {
-			walkErr = nil
-		}
-	}
+	walkIter := s.client.ListObjectsIter(ctx, s.bucket, minio.ListObjectsOptions{
+		Prefix:    s.relative(model.Dirname(item.Pathname)),
+		Recursive: true,
+	})
 
 	results, err := s.client.RemoveObjectsWithIter(ctx, s.bucket, walkIter, minio.RemoveObjectsOptions{})
 	if err != nil {
@@ -498,26 +493,4 @@ func (s Service) RemoveAll(ctx context.Context, pathname string) error {
 	}
 
 	return errors.Join(err, walkErr)
-}
-
-func (s Service) walkRecursive(ctx context.Context, pathname string, walkFn func(minio.ObjectInfo) error) error {
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
-	objectsCh := s.client.ListObjects(ctx, s.bucket, minio.ListObjectsOptions{
-		Prefix:    s.relative(pathname),
-		Recursive: true,
-	})
-
-	for object := range objectsCh {
-		if object.Err != nil {
-			return fmt.Errorf("list objects: %w", s.ConvertError(object.Err))
-		}
-
-		if err := walkFn(object); err != nil {
-			return err
-		}
-	}
-
-	return nil
 }
