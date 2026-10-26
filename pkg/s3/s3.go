@@ -109,7 +109,11 @@ func (s Service) Enabled() bool {
 }
 
 func (s Service) Close() error {
-	return model.ErrNotEnabled
+	if !s.enabled {
+		return model.ErrNotEnabled
+	}
+
+	return nil
 }
 
 func (s Service) Path(name string) string {
@@ -148,26 +152,21 @@ func (s Service) stat(ctx context.Context, pathname string) (model.Item, error) 
 }
 
 func (s Service) statDir(ctx context.Context, name string) (model.Item, error) {
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
 	name = dirKey(name)
 
-	objects := s.client.ListObjects(ctx, s.bucket, minio.ListObjectsOptions{
-		Prefix:  name,
-		MaxKeys: 1,
-	})
+	for object := range s.client.ListObjectsIter(ctx, s.bucket, minio.ListObjectsOptions{Prefix: name, MaxKeys: 1}) {
+		if object.Err != nil {
+			return model.Item{}, s.ConvertError(object.Err)
+		}
 
-	result, ok := <-objects
-	if !ok {
-		return model.Item{}, notExist()
+		return s.convertToItem(minio.ObjectInfo{Key: name}), nil
 	}
 
-	if result.Err != nil {
-		return model.Item{}, s.ConvertError(result.Err)
+	if err := ctx.Err(); err != nil {
+		return model.Item{}, err
 	}
 
-	return s.convertToItem(minio.ObjectInfo{Key: name}), nil
+	return model.Item{}, notExist()
 }
 
 func (s Service) List(ctx context.Context, pathname string) ([]model.Item, error) {
@@ -194,19 +193,10 @@ func (s Service) List(ctx context.Context, pathname string) ([]model.Item, error
 }
 
 func (s Service) list(ctx context.Context, prefix string) ([]model.Item, bool, error) {
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
-	objectsCh := s.client.ListObjects(ctx, s.bucket, minio.ListObjectsOptions{
-		Prefix:   prefix,
-		Unsorted: true,
-	})
-
 	var items []model.Item
-
 	var exists bool
 
-	for object := range objectsCh {
+	for object := range s.client.ListObjectsIter(ctx, s.bucket, minio.ListObjectsOptions{Prefix: prefix, Unsorted: true}) {
 		if object.Err != nil {
 			return nil, false, s.ConvertError(fmt.Errorf("list objects: %w", object.Err))
 		}
@@ -430,12 +420,16 @@ func (s Service) Rename(ctx context.Context, oldName, newName string) error {
 	}
 
 	for object := range s.client.ListObjectsIter(ctx, s.bucket, minio.ListObjectsOptions{Prefix: s.relative(model.Dirname(item.Pathname)), Recursive: true}) {
+		if object.Err != nil {
+			return fmt.Errorf("list object: %w", s.ConvertError(object.Err))
+		}
+
 		if err := s.rename(ctx, oldRelative, newRelative, object.Key); err != nil {
 			return fmt.Errorf("rename `%s`: %w", object.Key, err)
 		}
 	}
 
-	return nil
+	return ctx.Err()
 }
 
 func (s Service) rename(ctx context.Context, oldName, newName, objectKey string) error {
@@ -482,10 +476,18 @@ func (s Service) RemoveAll(ctx context.Context, pathname string) error {
 
 	var walkErr error
 
-	walkIter := s.client.ListObjectsIter(ctx, s.bucket, minio.ListObjectsOptions{
-		Prefix:    s.relative(model.Dirname(item.Pathname)),
-		Recursive: true,
-	})
+	walkIter := func(yield func(minio.ObjectInfo) bool) {
+		for object := range s.client.ListObjectsIter(ctx, s.bucket, minio.ListObjectsOptions{Prefix: s.relative(model.Dirname(item.Pathname)), Recursive: true}) {
+			if object.Err != nil {
+				walkErr = s.ConvertError(object.Err)
+				return
+			}
+
+			if !yield(object) {
+				return
+			}
+		}
+	}
 
 	results, err := s.client.RemoveObjectsWithIter(ctx, s.bucket, walkIter, minio.RemoveObjectsOptions{})
 	if err != nil {
@@ -496,5 +498,5 @@ func (s Service) RemoveAll(ctx context.Context, pathname string) error {
 		err = errors.Join(err, s.ConvertError(resultErr.Err))
 	}
 
-	return errors.Join(err, walkErr)
+	return errors.Join(err, walkErr, ctx.Err())
 }

@@ -27,6 +27,11 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer func() {
+		if err := storage.Close(); err != nil {
+			log.Fatal(err)
+		}
+	}()
 
 	log.Println("Creating a file `/test/first.txt`")
 	log.Println(storage.WriteTo(ctx, "/test/first.txt", strings.NewReader("Streamed content"), model.WriteOpts{}))

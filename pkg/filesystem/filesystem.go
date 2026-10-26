@@ -36,7 +36,11 @@ type Service struct {
 }
 
 func New(directory string) (Service, error) {
-	rootDirectory := strings.TrimSuffix(directory, "/")
+	if len(directory) == 0 {
+		return Service{}, model.ErrDirExpected
+	}
+
+	rootDirectory := path.Clean(directory)
 
 	info, err := os.Stat(rootDirectory)
 	if err != nil {

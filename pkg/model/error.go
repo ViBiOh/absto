@@ -17,7 +17,7 @@ var (
 )
 
 func ErrNotExist(err error) error {
-	return fmt.Errorf("%v: %w", err, errNotExists)
+	return errors.Join(err, errNotExists)
 }
 
 func IsNotExist(err error) bool {
