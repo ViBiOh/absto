@@ -215,6 +215,10 @@ func (s Service) list(ctx context.Context, prefix string) ([]model.Item, bool, e
 		items = append(items, item)
 	}
 
+	if err := ctx.Err(); err != nil {
+		return nil, false, err
+	}
+
 	slices.SortFunc(items, func(left, right model.Item) int {
 		return strings.Compare(left.SortKey(), right.SortKey())
 	})
