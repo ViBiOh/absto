@@ -222,7 +222,7 @@ func (s Service) Walk(_ context.Context, name string, walkFn func(model.Item) er
 		return model.ErrDirExpected
 	}
 
-	return s.ConvertError(s.walk(relative, s.pathname(name), info, walkFn))
+	return s.walk(relative, s.pathname(name), info, walkFn)
 }
 
 func (s Service) walk(relative, pathname string, info fs.FileInfo, walkFn func(model.Item) error) error {
@@ -241,7 +241,7 @@ func (s Service) walk(relative, pathname string, info fs.FileInfo, walkFn func(m
 
 	children, err := s.readDir(relative)
 	if err != nil {
-		return err
+		return s.ConvertError(err)
 	}
 
 	for _, child := range children {
