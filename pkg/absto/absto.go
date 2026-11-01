@@ -36,15 +36,15 @@ func Flags(flagSet *flag.FlagSet, prefix string, overrides ...flags.Override) *C
 
 	var config Config
 
-	flags.New("FileSystemDirectory", "Path to directory. Default is dynamic. `/data` on a server and Current Working Directory in a terminal.").Prefix(prefix).DocPrefix("filesystem").StringVar(flagSet, &config.Directory, defaultFS, overrides)
-	flags.New("ObjectEndpoint", "Storage Object endpoint").Prefix(prefix).DocPrefix("s3").StringVar(flagSet, &config.Endpoint, "", overrides)
-	flags.New("ObjectAccessKey", "Storage Object Access Key").Prefix(prefix).DocPrefix("s3").StringVar(flagSet, &config.AccessKey, "", overrides)
-	flags.New("ObjectSecretAccess", "Storage Object Secret Access").Prefix(prefix).DocPrefix("s3").StringVar(flagSet, &config.SecretAccess, "", overrides)
-	flags.New("ObjectBucket", "Storage Object Bucket").Prefix(prefix).DocPrefix("s3").StringVar(flagSet, &config.Bucket, "", overrides)
-	flags.New("ObjectRegion", "Storage Object Region").Prefix(prefix).DocPrefix("s3").StringVar(flagSet, &config.Region, "", overrides)
-	flags.New("ObjectClass", "Storage Object Class").Prefix(prefix).DocPrefix("s3").StringVar(flagSet, &config.StorageClass, "", overrides)
-	flags.New("ObjectSSL", "Use SSL").Prefix(prefix).DocPrefix("s3").BoolVar(flagSet, &config.UseSSL, true, overrides)
-	flags.New("PartSize", "PartSize configuration").Prefix(prefix).DocPrefix("s3").Uint64Var(flagSet, &config.PartSize, 5<<20, overrides)
+	flags.New("FileSystemDirectory", "Path to directory. Default is dynamic. `/data` on a server and Current Working Directory in a terminal.").Prefix(prefix).DocPrefix("filesystem").FlagVar(flagSet, &config.Directory, defaultFS, overrides)
+	flags.New("ObjectEndpoint", "Storage Object endpoint").Prefix(prefix).DocPrefix("s3").FlagVar(flagSet, &config.Endpoint, "", overrides)
+	flags.New("ObjectAccessKey", "Storage Object Access Key").Prefix(prefix).DocPrefix("s3").FlagVar(flagSet, &config.AccessKey, "", overrides)
+	flags.New("ObjectSecretAccess", "Storage Object Secret Access").Prefix(prefix).DocPrefix("s3").FlagVar(flagSet, &config.SecretAccess, "", overrides)
+	flags.New("ObjectBucket", "Storage Object Bucket").Prefix(prefix).DocPrefix("s3").FlagVar(flagSet, &config.Bucket, "", overrides)
+	flags.New("ObjectRegion", "Storage Object Region").Prefix(prefix).DocPrefix("s3").FlagVar(flagSet, &config.Region, "", overrides)
+	flags.New("ObjectClass", "Storage Object Class").Prefix(prefix).DocPrefix("s3").FlagVar(flagSet, &config.StorageClass, "", overrides)
+	flags.New("ObjectSSL", "Use SSL").Prefix(prefix).DocPrefix("s3").FlagVar(flagSet, &config.UseSSL, true, overrides)
+	flags.New("PartSize", "PartSize configuration").Prefix(prefix).DocPrefix("s3").FlagVar(flagSet, &config.PartSize, 5<<20, overrides)
 
 	return &config
 }
