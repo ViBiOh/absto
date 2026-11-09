@@ -1,7 +1,7 @@
 package filesystem
 
 import (
-	"encoding/json"
+	"encoding/json/v2"
 	"errors"
 	"io/fs"
 	"os"
@@ -116,8 +116,7 @@ func BenchmarkConvertToItem(b *testing.B) {
 		b.Error(err)
 	}
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		convertToItem("/pkg/filesystem/utils_test.go", info)
 	}
 }
@@ -130,8 +129,7 @@ func BenchmarkJsonItem(b *testing.B) {
 
 	item := convertToItem("/pkg/filesystem/utils_test.go", info)
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, _ = json.Marshal(item)
 	}
 }
